@@ -35,6 +35,7 @@ module SnfDislModule
     !type(GeometryContainer), allocatable, dimension(:) :: jametries              !< active geometry classes ja array
   contains
     procedure :: disl_load
+    procedure :: dis_da => disl_da
     ! -- private
     procedure :: allocate_scalars
     procedure :: allocate_arrays
@@ -50,6 +51,7 @@ module SnfDislModule
     procedure :: grid_finalize
     procedure :: connect
     procedure :: write_grb
+    procedure :: nodeu_to_string
 
   end type SnfDislType 
 
@@ -382,7 +384,8 @@ contains
     !
     ! -- log
     if (this%iout > 0) then
-      write (this%iout, '(1x,a)') 'Discretization Vertex data loaded'
+      write (this%iout, '(1x,a)') 'Setting Discretization Vertices'
+      write (this%iout, '(1x,a,/)') 'End setting discretization vertices'
     end if
     !
     ! -- Return
@@ -436,7 +439,8 @@ contains
     !
     ! -- log
     if (this%iout > 0) then
-      write (this%iout, '(1x,a)') 'Discretization Cell1d data loaded'
+      write (this%iout, '(1x,a)') 'Setting Discretization Cell1d'
+      write (this%iout, '(1x,a,/)') 'End Setting Discretization Cell1d'
     end if
     !
     ! -- Return
@@ -458,7 +462,6 @@ contains
     integer(I4B) :: k
     integer(I4B) :: ierr
     integer(I4B) :: icv_idx
-    integer(I4B) :: maxnnz = 5
     integer(I4B) :: maxvert
     integer(I4B) :: maxvertcell
     integer(I4B) :: icurcell
@@ -466,19 +469,19 @@ contains
     integer(I4B), dimension(:), pointer, contiguous :: vnumcells => null()
     ! format
     character(len=*), parameter :: fmtncpl = &
-      "(3x, 'SUCCESSFULLY READ ',i0,' CELL2D INFORMATION ENTRIES')"
+      "(3x, 'Successfully read ',i0,' CELL1D information entries')"
     character(len=*), parameter :: fmtmaxvert = &
-      "(3x, 'MAXIMUM NUMBER OF CELL2D VERTICES IS ',i0,' FOR CELL ', i0)"
+      "(3x, 'Maximum number of CELL2D vertices is ',i0,' for cell ', i0)"
     character(len=*), parameter :: fmtvert = &
-      "('ERROR. IAVERTCELLS DOES NOT CONTAIN THE CORRECT NUMBER OF '" //   &
-      "' CONNECTIONS FOR VERTEX ', i0)"
+      "('IAVERTCELLS does not contain the correct number of '" //   &
+      "' connections for vertex ', i0)"
     !
     ! -- initialize
     maxvert = 0
     maxvertcell = 0
     !
     ! -- initialize sparse matrix
-    call vert_spm%init(this%nodesuser, this%nvert, maxnnz)
+    call vert_spm%init(this%nodesuser, this%nvert, ncvert)
     !
     ! -- add sparse matrix connections from input memory paths
     icv_idx = 1
@@ -548,7 +551,6 @@ contains
     ! -- Write information
     write(this%iout, fmtncpl) this%nodesuser
     write(this%iout, fmtmaxvert) maxvert, maxvertcell
-    write(this%iout,'(1x,a)')'END PROCESSING VERTICES'
     !
     ! -- Return
     return
@@ -862,4 +864,64 @@ contains
     return
   end subroutine write_grb
   
+  subroutine nodeu_to_string(this, nodeu, str)
+    ! -- dummy
+    class(SnfDislType) :: this
+    integer(I4B), intent(in) :: nodeu
+    character(len=*), intent(inout) :: str
+    ! -- local
+    character(len=10) :: nstr
+    !
+    write (nstr, '(i0)') nodeu
+    str = '('//trim(adjustl(nstr))//')'
+    !
+    ! -- return
+    return
+  end subroutine nodeu_to_string
+
+  subroutine disl_da(this)
+    ! -- modules
+    use MemoryManagerModule, only: mem_deallocate
+    use MemoryManagerExtModule, only: memorylist_remove
+    use SimVariablesModule, only: idm_context
+    ! -- dummy
+    class(SnfDislType) :: this
+    !
+    ! -- Deallocate idm memory
+    call memorylist_remove(this%name_model, 'DISL', idm_context)
+    call memorylist_remove(component=this%name_model, &
+                           context=idm_context)
+    !
+    ! -- scalars
+    call mem_deallocate(this%nvert)
+    call mem_deallocate(this%nsupportedgeoms)
+    call mem_deallocate(this%nactivegeoms)
+    call mem_deallocate(this%convlength)
+    call mem_deallocate(this%convtime)
+    !
+    ! -- arrays
+    call mem_deallocate(this%nodeuser)
+    call mem_deallocate(this%nodereduced)
+    call mem_deallocate(this%idomain)
+    call mem_deallocate(this%vertices)
+    call mem_deallocate(this%fdc)
+    call mem_deallocate(this%celllen)
+    call mem_deallocate(this%cellcenters)
+    call mem_deallocate(this%centerverts)
+    call mem_deallocate(this%iageom)
+    call mem_deallocate(this%iageocellnum) 
+    call mem_deallocate(this%iavert)
+    call mem_deallocate(this%javert)
+    call mem_deallocate(this%iavertcells)
+    call mem_deallocate(this%javertcells)
+    !
+    ! -- DisBaseType deallocate
+    call this%DisBaseType%dis_da()
+    !
+    ! -- Return
+    return
+  end subroutine disl_da
+
+  
+
 end module SnfDislModule

@@ -452,6 +452,10 @@ if __name__ == "__main__":
             Path("../../../doc/mf6io/mf6ivar/dfn", "snf-disl.dfn"),
             Path("../../../src/Model/StreamNetworkFlow", "snf1disl1idm.f90"),
         ],
+        [
+            Path("../../../doc/mf6io/mf6ivar/dfn", "snf-mmr.dfn"),
+            Path("../../../src/Model/StreamNetworkFlow", "snf1mmr1idm.f90"),
+        ],
     ]
 
     for dfn in dfns:

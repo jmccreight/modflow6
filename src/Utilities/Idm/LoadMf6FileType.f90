@@ -741,7 +741,7 @@ contains
       call mem_setptr(ndim1, 'NLAY', dis_mempath)
       call mem_setptr(ndim2, 'NCPL', dis_mempath)
       model_shape = [ndim1, ndim2]
-    case ('DISU6')
+    case ('DISU6', 'DISL6')
       call mem_allocate(model_shape, 1, 'MODEL_SHAPE', model_mempath)
       call mem_setptr(ndim1, 'NODES', dis_mempath)
       model_shape = [ndim1]
