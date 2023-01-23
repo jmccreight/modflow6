@@ -468,6 +468,8 @@ contains
       call input_load('DISU6', 'GWF', 'DISU', modelname, pkgname, inunit, iout)
     case ('DISV6')
       call input_load('DISV6', 'GWF', 'DISV', modelname, pkgname, inunit, iout)
+    case ('DISL6')
+      call input_load('DISL6', 'SNF', 'DISL', modelname, pkgname, inunit, iout)
     case default
     end select
     !

@@ -131,6 +131,7 @@
 		<File RelativePath="..\src\Model\ModelUtilities\BoundaryPackage.f90"/>
 		<File RelativePath="..\src\Model\ModelUtilities\Connections.f90"/>
 		<File RelativePath="..\src\Model\ModelUtilities\DiscretizationBase.f90"/>
+		<File RelativePath="..\src\Model\ModelUtilities\DislGeom.f90"/>
 		<File RelativePath="..\src\Model\ModelUtilities\DisvGeom.f90"/>
 		<File RelativePath="..\src\Model\ModelUtilities\GwfBuyInputData.f90"/>
 		<File RelativePath="..\src\Model\ModelUtilities\GwfMvrPeriodData.f90"/>
@@ -147,6 +148,10 @@
 		<File RelativePath="..\src\Model\ModelUtilities\UzfCellGroup.f90"/>
 		<File RelativePath="..\src\Model\ModelUtilities\Xt3dAlgorithm.f90"/>
 		<File RelativePath="..\src\Model\ModelUtilities\Xt3dInterface.f90"/></Filter>
+		<Filter Name="StreamNetworkFlow">
+		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1.f90"/>
+		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1disl1.f90"/>
+		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1disl1idm.f90"/></Filter>
 		<File RelativePath="..\src\Model\BaseModel.f90"/>
 		<File RelativePath="..\src\Model\NumericalModel.f90"/>
 		<File RelativePath="..\src\Model\NumericalPackage.f90"/>
@@ -186,6 +191,9 @@
 		<File RelativePath="..\src\Utilities\Libraries\sparskit2\ilut.f90"/>
 		<File RelativePath="..\src\Utilities\Libraries\rcm\rcm.f90"/>
 		<File RelativePath="..\src\Utilities\Libraries\sparsekit\sparsekit.f90"/></Filter>
+		<Filter Name="Matrix">
+		<File RelativePath="..\src\Utilities\Matrix\MatrixBase.f90"/>
+		<File RelativePath="..\src\Utilities\Matrix\SparseMatrix.f90"/></Filter>
 		<Filter Name="Memory">
 		<File RelativePath="..\src\Utilities\Memory\Memory.f90"/>
 		<File RelativePath="..\src\Utilities\Memory\MemoryHelper.f90"/>
@@ -193,9 +201,6 @@
 		<File RelativePath="..\src\Utilities\Memory\MemoryManager.f90"/>
 		<File RelativePath="..\src\Utilities\Memory\MemoryManagerExt.f90"/>
 		<File RelativePath="..\src\Utilities\Memory\MemorySetHandler.f90"/></Filter>
-		<Filter Name="Matrix">
-		<File RelativePath="..\src\Utilities\Matrix\MatrixBase.f90"/>
-		<File RelativePath="..\src\Utilities\Matrix\SparseMatrix.f90"/></Filter>
 		<Filter Name="Observation">
 		<File RelativePath="..\src\Utilities\Observation\Obs3.f90"/>
 		<File RelativePath="..\src\Utilities\Observation\ObsContainer.f90"/>

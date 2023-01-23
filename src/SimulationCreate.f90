@@ -250,6 +250,7 @@ contains
     ! -- modules
     use GwfModule, only: gwf_cr
     use GwtModule, only: gwt_cr
+    use SnfModule, only: snf_cr
     use ConstantsModule, only: LENMODELNAME
     ! -- dummy
     ! -- local
@@ -281,6 +282,11 @@ contains
           call parser%GetString(fname)
           call add_model(im, 'GWT6', mname)
           call gwt_cr(fname, im, modelname(im))
+          call add_dist_model(im)
+        case ('SNF6')
+          call parser%GetString(fname)
+          call add_model(im, 'SNF6', mname)
+          call snf_cr(fname, im, modelname(im))
           call add_dist_model(im)
         case default
           write (errmsg, '(4x,a,a)') &
