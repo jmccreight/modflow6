@@ -223,9 +223,15 @@ contains
     deallocate (this%bndlist)
     !
     ! -- nullify pointers
-    call mem_deallocate(this%x, 'X', this%memoryPath)
-    call mem_deallocate(this%rhs, 'RHS', this%memoryPath)
-    call mem_deallocate(this%ibound, 'IBOUND', this%memoryPath)
+    if (associated(this%x)) then
+      call mem_deallocate(this%x, 'X', this%memoryPath)
+    end if
+    if (associated(this%rhs)) then
+      call mem_deallocate(this%rhs, 'RHS', this%memoryPath)
+    end if
+    if (associated(this%ibound)) then
+      call mem_deallocate(this%ibound, 'IBOUND', this%memoryPath)
+    end if
     !
     ! -- BaseModelType
     call this%BaseModelType%model_da()

@@ -639,6 +639,7 @@ if __name__ == '__main__':
                   'exg-gwfgwt',
                   'exg-gwtgwt',
                   'sln-ims',  # dfn completed  tex updated
+                  'sln-ems',
                   'gwf-nam',  # dfn completed  tex updated
                   'gwf-dis',  # dfn completed  tex updated
                   'gwf-disv',  # dfn completed  tex updated
@@ -687,6 +688,10 @@ if __name__ == '__main__':
                   'gwt-fmi',
                   'gwt-mvt',
                   'gwt-api',
+                  'snf-nam',
+                  'snf-disl',
+                  'snf-mmr',
+                  'snf-flw',
                   'utl-spc',
                   'utl-spca',
                   'utl-obs',

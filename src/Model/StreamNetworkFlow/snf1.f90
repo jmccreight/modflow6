@@ -8,7 +8,7 @@ module SnfModule
   use VersionModule, only: write_listfile_header
   use BaseModelModule, only: BaseModelType
   use NumericalModelModule, only: NumericalModelType
-  use BndModule, only: BndType, GetBndFromList
+  use BndModule, only: BndType, AddBndToList, GetBndFromList
   use SnfMmrModule, only: SnfMmrType
   use BudgetModule, only: BudgetType
 
@@ -23,8 +23,11 @@ module SnfModule
     integer(I4B), pointer :: inmmr => null() ! unit number MMR
   contains
     procedure :: allocate_scalars
+    procedure :: model_df => snf_df
+    procedure :: model_ar => snf_ar
     procedure :: model_da => snf_da
     procedure :: model_solve => snf_solve !< routine for solving this model for the current time step
+    procedure :: package_create
     procedure :: load_input_context => snf_load_input_context
   end type SnfModelType
 
@@ -69,7 +72,6 @@ module SnfModule
     integer(I4B) :: nwords
     character(len=LINELENGTH), allocatable, dimension(:) :: words
     ! -- format
-! ------------------------------------------------------------------------------
     !
     ! -- Allocate a new SNF Model (this) and add it to basemodellist
     allocate (this)
@@ -169,8 +171,8 @@ module SnfModule
       do j = 1, namefile_obj%get_nval_for_row(i)
         iu = namefile_obj%get_unitnumber_rowcol(i, j)
         call namefile_obj%get_pakname(i, j, pakname)
-        !call this%package_create(cunit(i), ipakid, ipaknum, pakname, iu, &
-        !                         this%iout)
+        call this%package_create(cunit(i), ipakid, ipaknum, pakname, iu, &
+                                 this%iout)
         ipaknum = ipaknum + 1
         ipakid = ipakid + 1
       end do
@@ -190,26 +192,17 @@ module SnfModule
     ! -- Allocate model arrays, now that neq and nja are known
     call this%allocate_arrays()
     !
-    ! -- Define packages and assign iout for time series managers
-    !do ip = 1, this%bndlist%Count()
-      !cdl packobj => GetBndFromList(this%bndlist, ip)
-      ! cdl call packobj%bnd_df(this%neq, this%dis)
-    !end do
-
-
-    !
     ! -- return
     return
   end subroutine snf_cr
 
-  !> @brief Allocate memory for non-allocatable members
+  !> @brief Allocate memory for scalar members
   subroutine allocate_scalars(this, modelname)
     ! -- modules
     use MemoryManagerModule, only: mem_allocate
     ! -- dummy
     class(SnfModelType) :: this
     character(len=*), intent(in) :: modelname
-! ------------------------------------------------------------------------------
     !
     ! -- allocate members from parent class
     call this%NumericalModelType%allocate_scalars(modelname)
@@ -223,15 +216,74 @@ module SnfModule
     return
   end subroutine allocate_scalars
 
-  !> @brief Make explicit solve for this time step
-  subroutine snf_solve(this)
+  !> @brief Define packages of the model
+  !<
+  subroutine snf_df(this)
     ! -- modules
     ! -- dummy
     class(SnfModelType) :: this
     ! -- local
     integer(I4B) :: ip
     class(BndType), pointer :: packobj
-! ------------------------------------------------------------------------------
+    !
+    ! -- Define packages and assign iout for time series managers
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_df(this%neq, this%dis)
+    end do
+    !
+    ! -- Store information needed for observations
+    !call this%obs%obs_df(this%iout, this%name, 'GWF', this%dis)
+    !
+    ! -- return
+    return
+  end subroutine snf_df
+
+  !> @brief SNF Allocate and Read
+  !<
+  subroutine snf_ar(this)
+    ! -- dummy
+    class(SnfModelType) :: this
+    ! -- locals
+    integer(I4B) :: ip
+    class(BndType), pointer :: packobj
+    !
+    ! -- Allocate and read modules attached to model
+    ! if (this%inic > 0) call this%ic%ic_ar(this%x)
+    ! if (this%innpf > 0) call this%npf%npf_ar(this%ic, this%vsc, this%ibound, &
+    !                                          this%x)
+    ! if (this%insto > 0) call this%sto%sto_ar(this%dis, this%ibound)
+    ! if (this%inmvr > 0) call this%mvr%mvr_ar()
+    ! if (this%inobs > 0) call this%obs%gwf_obs_ar(this%ic, this%x, this%flowja)
+    !
+    ! -- Call dis_ar to write binary grid file
+    ! call this%dis%dis_ar(this%npf%icelltype)
+    !
+    ! -- set up output control
+    ! call this%oc%oc_ar(this%x, this%dis, this%npf%hnoflo)
+    ! call this%budget%set_ibudcsv(this%oc%ibudcsv)
+    !
+    ! -- Package input files now open, so allocate and read
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%set_pointers(this%dis%nodes, this%ibound, this%x, &
+                                this%xold, this%flowja)
+      ! -- Read and allocate package
+      call packobj%bnd_ar()
+    end do
+    !
+    ! -- return
+    return
+  end subroutine snf_ar
+
+  !> @brief Make explicit solve for this time step
+  subroutine snf_solve(this)
+    ! -- modules
+    ! -- dummy
+    class(SnfModelType) :: this
+    ! -- local
+    !integer(I4B) :: ip
+    !class(BndType), pointer :: packobj
     !
     ! -- Call boundary packages to set up inflows
     ! call this%flw%cf()
@@ -273,7 +325,6 @@ module SnfModule
     ! -- local
     integer(I4B) :: ip
     class(BndType), pointer :: packobj
-! ------------------------------------------------------------------------------
     !
     ! -- Internal flow packages deallocate
     call this%dis%dis_da()
@@ -299,7 +350,53 @@ module SnfModule
     return
   end subroutine snf_da
 
-    !> @brief Load input context for supported package
+  !> @brief Create boundary condition packages for this model
+  !<
+  subroutine package_create(this, filtyp, ipakid, ipaknum, pakname, inunit, &
+                            iout)
+    ! -- modules
+    use ConstantsModule, only: LINELENGTH
+    use SimModule, only: store_error
+    use SnfFlwModule, only: flw_create
+    ! -- dummy
+    class(SnfModelType) :: this
+    character(len=*), intent(in) :: filtyp
+    integer(I4B), intent(in) :: ipakid
+    integer(I4B), intent(in) :: ipaknum
+    character(len=*), intent(in) :: pakname
+    integer(I4B), intent(in) :: inunit
+    integer(I4B), intent(in) :: iout
+    ! -- local
+    class(BndType), pointer :: packobj
+    class(BndType), pointer :: packobj2
+    integer(I4B) :: ip
+    !
+    ! -- This part creates the package object
+    select case (filtyp)
+    case ('FLW6')
+      call flw_create(packobj, ipakid, ipaknum, inunit, iout, this%name, pakname)
+    case default
+      write (errmsg, *) 'Invalid package type: ', filtyp
+      call store_error(errmsg, terminate=.TRUE.)
+    end select
+    !
+    ! -- Check to make sure that the package name is unique, then store a
+    !    pointer to the package in the model bndlist
+    do ip = 1, this%bndlist%Count()
+      packobj2 => GetBndFromList(this%bndlist, ip)
+      if (packobj2%packName == pakname) then
+        write (errmsg, '(a,a)') 'Cannot create package.  Package name  '// &
+          'already exists: ', trim(pakname)
+        call store_error(errmsg, terminate=.TRUE.)
+      end if
+    end do
+    call AddBndToList(this%bndlist, packobj)
+    !
+    ! -- return
+    return
+  end subroutine package_create
+
+  !> @brief Load input context for supported package
   !<
   subroutine snf_load_input_context(this, filtyp, modelname, pkgname, inunit, &
                                     iout, ipaknum)
@@ -314,7 +411,6 @@ module SnfModule
     integer(I4B), intent(in) :: iout
     integer(I4B), optional, intent(in) :: ipaknum
     ! -- local
-! ------------------------------------------------------------------------------
     !
     ! -- only load if there is a file to read
     if (inunit <= 0) return

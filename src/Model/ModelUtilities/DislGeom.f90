@@ -80,8 +80,7 @@ module DislGeom
     real(DP), intent(out) :: cl1
     real(DP), intent(out) :: cl2
     ! -- local
-    integer(I4B) :: v, n, shared_vert
-    integer(I4B) :: istart1, istart2, istop1, istop2
+    integer(I4B) :: shared_vert
     character(len=300) :: ermsg
     character(len=*), parameter :: fmtvert = &
       "('ERROR. CELLS ', I0, ' AND ', i0, ' DO NOT SHARE A VERTEX ')"
@@ -113,7 +112,7 @@ module DislGeom
     integer(I4B), intent(in) :: cell2
     integer(I4B), intent(out) :: shared_vert
     ! -- local
-    integer(I4B) :: n, v, test1, test2, test3, test4, test5
+    integer(I4B) :: n, v, test1, test3, test4, test5
     !
     ! find shared vertex
     shared_vert = 0
@@ -280,8 +279,6 @@ module DislGeom
     integer(I4B), intent(in) :: vert1
     integer(I4B), intent(in) :: vert2
     logical :: l
-    real(DP) :: x1, y1, z1, x2, y2, z2, xc, yc, zc
-    real(DP) :: dx, dy, dz
 ! ------------------------------------------------------------------------------
     if (this%centerverts(2, nodenum) == 0) then
       ! cell center is at a vertex

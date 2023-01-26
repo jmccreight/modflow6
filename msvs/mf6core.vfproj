@@ -152,6 +152,7 @@
 		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1.f90"/>
 		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1disl1.f90"/>
 		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1disl1idm.f90"/>
+		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1flw1.f90"/>
 		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1mmr1.f90"/>
 		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1mmr1idm.f90"/></Filter>
 		<File RelativePath="..\src\Model\BaseModel.f90"/>
@@ -165,6 +166,7 @@
 		<File RelativePath="..\src\Solution\LinearMethods\ims8misc.f90"/>
 		<File RelativePath="..\src\Solution\LinearMethods\ims8reordering.f90"/></Filter>
 		<File RelativePath="..\src\Solution\BaseSolution.f90"/>
+		<File RelativePath="..\src\Solution\ExplicitSolution.f90"/>
 		<File RelativePath="..\src\Solution\NumericalSolution.f90"/>
 		<File RelativePath="..\src\Solution\SolutionGroup.f90"/></Filter>
 		<Filter Name="Timing">

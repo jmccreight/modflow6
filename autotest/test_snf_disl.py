@@ -5,13 +5,14 @@ import numpy as np
 
 
 def test_disl_simple(function_tmpdir, targets):
+    sim_ws = str(function_tmpdir)
     mf6 = targets["mf6"]
     name = "snf-disl01"
     sim = flopy.mf6.MFSimulation(
-        sim_name=name, version="mf6", exe_name=mf6, sim_ws=str(function_tmpdir)
+        sim_name=name, version="mf6", exe_name=mf6, sim_ws=sim_ws
     )
     tdis = flopy.mf6.ModflowTdis(sim)
-    ims = flopy.mf6.ModflowIms(sim, print_option="SUMMARY")
+    ems = flopy.mf6.ModflowEms(sim)
     snf = flopy.mf6.ModflowSnf(sim, modelname=name)
 
     vertices = [
@@ -46,7 +47,39 @@ def test_disl_simple(function_tmpdir, targets):
         x_coef=1.
     )
 
+    flw_spd = {0: [[0, 1.0]]}
+    flw = flopy.mf6.ModflowSnfflw(
+        snf,
+        print_input=True,
+        print_flows=True,
+        stress_period_data=flw_spd,
+    )
+
     sim.write_simulation()
+
+    mfsimnamtxt = f"""BEGIN options
+END options
+
+BEGIN timing
+  TDIS6  snf-disl01.tdis
+END timing
+
+BEGIN models
+  snf6  snf-disl01.nam  snf-disl01
+END models
+
+BEGIN exchanges
+END exchanges
+
+BEGIN SOLUTIONGROUP 1
+  EMS6 {name}.ems {name}
+END SOLUTIONGROUP
+"""
+    fname = os.path.join(sim_ws, 'mfsim.nam')
+    with open(fname, 'w') as f:
+        f.write(mfsimnamtxt)
+
+
     success, buff = sim.run_simulation(silent=False)
     errmsg = f"model did not terminate successfully\n{buff}"
     assert success, errmsg

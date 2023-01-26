@@ -397,6 +397,7 @@ contains
     use BaseModelModule, only: BaseModelType
     use BaseExchangeModule, only: BaseExchangeType
     use NumericalSolutionModule, only: solution_create
+    use ExplicitSolutionModule, only: solution_explicit_create
     ! -- dummy
     ! -- local
     type(SolutionGroupType), pointer :: sgp
@@ -476,6 +477,43 @@ contains
           ! -- Create the solution, retrieve from the list, and add to sgp
           call parser%GetString(fname)
           call solution_create(fname, isoln)
+          sp => GetBaseSolutionFromList(basesolutionlist, isoln)
+          call sgp%add_solution(isoln, sp)
+          !
+          ! -- Add all of the models that are listed on this line to
+          !    the current solution (sp)
+          do
+            !
+            ! -- Set istart and istop to encompass model name. Exit this
+            !    loop if there are no more models.
+            call parser%GetStringCaps(mname)
+            if (mname == '') exit
+            !
+            ! -- Find the model id, and then get model
+            mid = ifind(modelname, mname)
+            if (mid <= 0) then
+              write (errmsg, '(a,a)') 'Error.  Invalid modelname: ', &
+                trim(mname)
+              call store_error(errmsg)
+              call parser%StoreErrorUnit()
+            end if
+            mp => GetBaseModelFromList(basemodellist, mid)
+            !
+            ! -- Add the model to the solution
+            call sp%add_model(mp)
+            mp%idsoln = isoln
+            !
+          end do
+          !
+        case ('EMS6')
+          !
+          ! -- Initialize and increment counters
+          isoln = isoln + 1
+          isgpsoln = isgpsoln + 1
+          !
+          ! -- Create the solution, retrieve from the list, and add to sgp
+          call parser%GetString(fname)
+          call solution_explicit_create(fname, isoln)
           sp => GetBaseSolutionFromList(basesolutionlist, isoln)
           call sgp%add_solution(isoln, sp)
           !
