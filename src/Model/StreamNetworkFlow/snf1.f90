@@ -2,9 +2,10 @@
 module SnfModule
 
   use KindModule, only: DP, I4B
-  use ConstantsModule, only: LENFTYPE
+  use ConstantsModule, only: DZERO, LENFTYPE
   use InputOutputModule, only: ParseLine, upcase
   use SimVariablesModule, only: errmsg
+  use MemoryManagerModule, only: mem_allocate
   use VersionModule, only: write_listfile_header
   use BaseModelModule, only: BaseModelType
   use NumericalModelModule, only: NumericalModelType
@@ -23,6 +24,7 @@ module SnfModule
     integer(I4B), pointer :: inmmr => null() ! unit number MMR
   contains
     procedure :: allocate_scalars
+    procedure :: allocate_arrays
     procedure :: model_df => snf_df
     procedure :: model_ar => snf_ar
     procedure :: model_da => snf_da
@@ -199,7 +201,6 @@ module SnfModule
   !> @brief Allocate memory for scalar members
   subroutine allocate_scalars(this, modelname)
     ! -- modules
-    use MemoryManagerModule, only: mem_allocate
     ! -- dummy
     class(SnfModelType) :: this
     character(len=*), intent(in) :: modelname
@@ -215,6 +216,34 @@ module SnfModule
     ! -- return
     return
   end subroutine allocate_scalars
+
+  !> @brief Allocate memory for scalar members
+  subroutine allocate_arrays(this)
+    ! -- modules
+    ! -- dummy
+    class(SnfModelType) :: this
+    integer(I4B) :: i
+    !
+    ! -- allocate members from parent class
+    call this%NumericalModelType%allocate_arrays()
+    !
+    ! -- This is not a numerical solution, so x, rhs, and active
+    !    are allocated by a numerical solution, so need to do it
+    !    here.
+    call mem_allocate(this%x, this%neq, 'X', this%memoryPath)
+    call mem_allocate(this%rhs, this%neq, 'RHS', this%memoryPath)
+    call mem_allocate(this%ibound, this%neq, 'IBOUND', this%memoryPath)
+    !
+    ! initialize arrays
+    do i = 1, this%neq
+      this%x(i) = DZERO
+      this%rhs(i) = DZERO
+      this%ibound(i) = 0
+    end do
+    !
+    ! -- return
+    return
+  end subroutine allocate_arrays
 
   !> @brief Define packages of the model
   !<
