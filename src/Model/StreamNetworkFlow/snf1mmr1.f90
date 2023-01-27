@@ -14,9 +14,7 @@ module SnfMmrModule
   type, extends(NumericalPackageType) :: SnfMmrType
     real(DP), dimension(:), pointer, contiguous :: mann_n => null() !< manning roughness coefficient
     real(DP), dimension(:), pointer, contiguous :: seg_depth => null() !< depth of bankfull water in segment
-    ! get from disl -- real(DP), dimension(:), pointer, contiguous :: seg_length => null() !< muskingum manning parameter
     real(DP), dimension(:), pointer, contiguous :: seg_slope => null() !< surface slope of each segment
-    integer(I4B), dimension(:), pointer, contiguous :: tosegment => null() !< index of the downstream segment
     real(DP), dimension(:), pointer, contiguous :: x_coef => null() !< routing weighting factor
   contains
     procedure :: allocate_arrays
@@ -30,14 +28,9 @@ module SnfMmrModule
 
   contains
 
+  !> @brief create package
+  !<
   subroutine mmr_cr(mmrobj, name_model, inunit, dis, iout)
-! ******************************************************************************
-! mmr_cr -- Create a new MMR object. Pass a inunit value of 0 if mmr data will
-!           initialized from memory
-! ******************************************************************************
-!
-!    SPECIFICATIONS:
-! ------------------------------------------------------------------------------
     ! -- modules
     use IdmMf6FileLoaderModule, only: input_load
     use ConstantsModule, only: LENPACKAGETYPE
@@ -51,7 +44,6 @@ module SnfMmrModule
     character(len=*), parameter :: fmtheader = &
       "(1x, /1x, 'MMR -- MUSKINGUM MANNINGS ROUTING PACKAGE, VERSION 1, 1/23/2023', &
         &' INPUT READ FROM UNIT ', i0, /)"
-! ------------------------------------------------------------------------------
     !
     ! -- Create the object
     allocate (mmrobj)
@@ -80,6 +72,8 @@ module SnfMmrModule
     return
   end subroutine mmr_cr
 
+  !> @brief allocate memory for arrays
+  !<
   subroutine allocate_arrays(this)
     ! -- dummy
     class(SnfMmrType) :: this
@@ -89,13 +83,14 @@ module SnfMmrModule
     call mem_allocate(this%mann_n, this%dis%nodes, 'MANN_N', this%memoryPath)
     call mem_allocate(this%seg_depth, this%dis%nodes, 'SEG_DEPTH', this%memoryPath)
     call mem_allocate(this%seg_slope, this%dis%nodes, 'SEG_SLOPE', this%memoryPath)
-    call mem_allocate(this%tosegment, this%dis%nodes, 'TOSEGMENT', this%memoryPath)
     call mem_allocate(this%x_coef, this%dis%nodes, 'X_COEF', this%memoryPath)
     !
     ! -- Return
     return
   end subroutine allocate_arrays
     
+  !> @brief load data from IDM to package
+  !<
   subroutine mmr_load(this)
     ! -- dummy
     class(SnfMmrType) :: this
@@ -157,6 +152,8 @@ module SnfMmrModule
 
   end subroutine log_options
 
+  !> @brief copy griddata from IDM to package
+  !<
   subroutine source_griddata(this)
     ! -- modules
     use SimModule, only: count_errors, store_error
@@ -185,7 +182,6 @@ module SnfMmrModule
     call mem_set_value(this%mann_n, 'MANN_N', idmMemoryPath, map, found%mann_n)
     call mem_set_value(this%seg_depth, 'SEG_DEPTH', idmMemoryPath, map, found%seg_depth)
     call mem_set_value(this%seg_slope, 'SEG_SLOPE', idmMemoryPath, map, found%seg_slope)
-    call mem_set_value(this%tosegment, 'TOSEGMENT', idmMemoryPath, map, found%tosegment)
     call mem_set_value(this%x_coef, 'X_COEF', idmMemoryPath, map, found%x_coef)
     !
     ! -- ensure MANN_N was found
@@ -203,12 +199,6 @@ module SnfMmrModule
     ! -- ensure SEG_SLOPE was found
     if (.not. found%seg_slope) then
       write (errmsg, '(a)') 'Error in GRIDDATA block: SEG_SLOPE not found.'
-      call store_error(errmsg)
-    end if
-    !
-    ! -- ensure TOSEGMENT was found
-    if (.not. found%tosegment) then
-      write (errmsg, '(a)') 'Error in GRIDDATA block: TOSEGMENT not found.'
       call store_error(errmsg)
     end if
     !
@@ -248,10 +238,6 @@ module SnfMmrModule
       write (this%iout, '(4x,a)') 'SEG_SLOPE set from input file'
     end if
 
-    if (found%tosegment) then
-      write (this%iout, '(4x,a)') 'TOSEGMENT set from input file'
-    end if
-
     if (found%x_coef) then
       write (this%iout, '(4x,a)') 'X_COEF set from input file'
     end if
@@ -260,6 +246,8 @@ module SnfMmrModule
 
   end subroutine log_griddata
 
+  !> @brief deallocate memory
+  !<
   subroutine mmr_da(this)
     ! -- modules
     use MemoryManagerModule, only: mem_deallocate
@@ -272,13 +260,11 @@ module SnfMmrModule
     call memorylist_remove(this%name_model, 'MMR', idm_context)
     !
     ! -- Scalars
-
     !
     ! -- Deallocate arrays
     call mem_deallocate(this%mann_n)
     call mem_deallocate(this%seg_depth)
     call mem_deallocate(this%seg_slope)
-    call mem_deallocate(this%tosegment)
     call mem_deallocate(this%x_coef)
     !
     ! -- deallocate parent
@@ -288,6 +274,4 @@ module SnfMmrModule
     return
   end subroutine mmr_da
     
-
-
 end module SnfMmrModule

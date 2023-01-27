@@ -12,7 +12,6 @@ module SnfMmrInputModule
     logical :: mann_n = .false.
     logical :: seg_depth = .false.
     logical :: seg_slope = .false.
-    logical :: tosegment = .false.
     logical :: x_coef = .false.
   end type SnfMmrParamFoundType
 
@@ -81,22 +80,6 @@ module SnfMmrInputModule
     )
 
   type(InputParamDefinitionType), parameter :: &
-    snfmmr_tosegment = InputParamDefinitionType &
-    ( &
-    'SNF', & ! component
-    'MMR', & ! subcomponent
-    'GRIDDATA', & ! block
-    'TOSEGMENT', & ! tag name
-    'TOSEGMENT', & ! fortran variable
-    'INTEGER1D', & ! type
-    'NODES', & ! shape
-    .true., & ! required
-    .false., & ! multi-record
-    .false., & ! preserve case
-    .false. & ! layered
-    )
-
-  type(InputParamDefinitionType), parameter :: &
     snfmmr_x_coef = InputParamDefinitionType &
     ( &
     'SNF', & ! component
@@ -119,7 +102,6 @@ module SnfMmrInputModule
     snfmmr_mann_n, &
     snfmmr_seg_depth, &
     snfmmr_seg_slope, &
-    snfmmr_tosegment, &
     snfmmr_x_coef &
     ]
 

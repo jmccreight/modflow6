@@ -1,11 +1,12 @@
 module SnfDislModule
 
   use KindModule, only: DP, I4B, LGP
-  use ConstantsModule, only: LENMEMPATH, LENVARNAME, DZERO, LINELENGTH
-  use SimVariablesModule, only: errmsg
+  use ConstantsModule, only: LENMEMPATH, LENVARNAME, DZERO, DONE, LINELENGTH
+  use SimVariablesModule, only: errmsg, warnmsg
   use MemoryHelperModule, only: create_mem_path
   use MemoryManagerModule, only: mem_allocate
-  use SimModule, only: count_errors, store_error, store_error_unit
+  use SimModule, only: count_errors, store_error, store_error_unit, &
+                       store_warning
   use BaseDisModule, only: DisBaseType
   use DislGeom, only: calcdist, partialdist
 
@@ -16,23 +17,16 @@ module SnfDislModule
 
   type, extends(DisBaseType) :: SnfDislType  
     integer(I4B), pointer :: nvert => null()                                     !< number of x,y vertices
-    integer(I4B), pointer :: nsupportedgeoms => null()                           !< number of supported geometries
-    integer(I4B), pointer :: nactivegeoms => null()                              !< number of active geometries
     real(DP), pointer :: convlength => null()                                    !< conversion factor for length
     real(DP), pointer :: convtime => null()                                      !< conversion factor for time  
-    real(DP), dimension(:,:), pointer, contiguous :: vertices => null()          !< cell vertices stored as 2d array of x, y, and z
-    real(DP), dimension(:,:), pointer, contiguous :: cellcenters => null()       !< cell centers stored as 2d array of x, y, and z
-    integer(I4B), dimension(:,:), pointer, contiguous :: centerverts => null()   !< vertex at cell center or vertices cell center is between
+    real(DP), dimension(:), pointer, contiguous :: segment_length => null()      !< length of each segment
+    integer(I4B), dimension(:), pointer, contiguous :: tosegment => null()       !< downstream segment index (nodes)
+    integer(I4B), dimension(:), pointer, contiguous :: idomain => null()         !< idomain (nodes)
+    real(DP), dimension(:, :), pointer, contiguous :: vertices => null()         !< cell vertices stored as 2d array with columns of x, y, and z
+    real(DP), dimension(:, :), pointer, contiguous :: cellxyz => null()          !< segment midpoints stored as 2d array with columns of x, y, and z
     real(DP), dimension(:), pointer, contiguous :: fdc => null()                 !< fdc stored as array
-    real(DP), dimension(:), pointer, contiguous :: celllen => null()             !< length of each conduit
     integer(I4B), dimension(:), pointer, contiguous :: iavert => null()          !< cell vertex pointer ia array
     integer(I4B), dimension(:), pointer, contiguous :: javert => null()          !< cell vertex pointer ja array
-    integer(I4B), dimension(:), pointer, contiguous :: iavertcells => null()     !< vertex to cells ia array
-    integer(I4B), dimension(:), pointer, contiguous :: javertcells => null()     !< vertex to cells ja array
-    integer(I4B), dimension(:), pointer, contiguous :: idomain => null()         !< idomain (nodes)
-    integer(I4B), dimension(:), pointer, contiguous :: iageom => null()          !< cell geometry pointer ia array (nodes))
-    integer(I4B), dimension(:), pointer, contiguous :: iageocellnum => null()    !< cell geometry number ia array (nodes))
-    !type(GeometryContainer), allocatable, dimension(:) :: jametries              !< active geometry classes ja array
   contains
     procedure :: disl_load
     procedure :: dis_da => disl_da
@@ -43,20 +37,24 @@ module SnfDislModule
     procedure :: source_dimensions
     procedure :: source_griddata
     procedure :: source_vertices
-    procedure :: source_cell1d
+    procedure :: source_cell2d
     procedure :: log_options
     procedure :: log_dimensions
     procedure :: log_griddata
     procedure :: define_cellverts
     procedure :: grid_finalize
-    procedure :: connect
+    !procedure :: connect
+    procedure :: create_connections
     procedure :: write_grb
+    procedure :: get_nodenumber_idx1
     procedure :: nodeu_to_string
 
   end type SnfDislType 
 
 contains
 
+  !> @brief Create new disl package
+  !<
   subroutine disl_cr(dis, name_model, inunit, iout)
     use IdmMf6FileLoaderModule, only: input_load
     class(DisBaseType), pointer :: dis
@@ -89,6 +87,8 @@ contains
     return
   end subroutine disl_cr
   
+  !> @brief Allocate scalar variables
+  !<
   subroutine allocate_scalars(this, name_model)
     ! -- modules
     use MemoryManagerModule, only: mem_allocate
@@ -96,22 +96,17 @@ contains
     ! -- dummy
     class(SnfDislType) :: this
     character(len=*), intent(in) :: name_model
-! ------------------------------------------------------------------------------
     !
     ! -- Allocate parent scalars
     call this%DisBaseType%allocate_scalars(name_model)
     !
     ! -- Allocate
     call mem_allocate(this%nvert, 'NVERT', this%memoryPath)
-    call mem_allocate(this%nsupportedgeoms, 'NSUPPORTEDGEOMS', this%memoryPath)
-    call mem_allocate(this%nactivegeoms, 'NACTIVEGEOMS', this%memoryPath)
     call mem_allocate(this%convlength, 'CONVLENGTH', this%memoryPath)
     call mem_allocate(this%convtime, 'CONVTIME', this%memoryPath)
-
     !
     ! -- Initialize
     this%nvert = 0
-    this%nactivegeoms = 0
     this%ndim = 1
     this%convlength = DONE
     this%convtime = DONE
@@ -129,8 +124,17 @@ contains
     call this%source_options()
     call this%source_dimensions()
     call this%source_griddata()
-    call this%source_vertices()
-    call this%source_cell1d()
+
+    ! create connectivity using tosegment
+    call this%create_connections()
+
+    ! If vertices provided by user, read and store vertices
+    if (this%nvert > 0) then
+      call this%source_vertices()
+      call this%source_cell2d()
+    end if
+
+    ! finalize the grid
     call this%grid_finalize()
     !
     ! -- Return
@@ -236,8 +240,11 @@ contains
     idmMemoryPath = create_mem_path(this%name_model, 'DISL', idm_context)
     !
     ! -- update defaults with idm sourced values
-    call mem_set_value(this%nodesuser, 'NODES', idmMemoryPath, found%nodes)
+    call mem_set_value(this%nodes, 'NODES', idmMemoryPath, found%nodes)
     call mem_set_value(this%nvert, 'NVERT', idmMemoryPath, found%nvert)
+    !
+    ! -- for now assume nodes = nodesuser
+    this%nodesuser = this%nodes
     !
     ! -- log simulation values
     if (this%iout > 0) then
@@ -251,30 +258,29 @@ contains
       call store_error_unit(this%inunit)
     end if
     if (this%nvert < 1) then
-      call store_error( &
-        'NVERT was not specified or was specified incorrectly.')
-      call store_error_unit(this%inunit)
+      call store_warning( &
+        'NVERT was not specified or was specified as zero.  The &
+        &VERTICES and CELL2D blocks will not be read for the DISL6 &
+        &Package in model ' // trim(this%memoryPath) // '.')
     end if
     !
     ! -- Allocate non-reduced vectors for disl
+    call mem_allocate(this%segment_length, this%nodesuser, 'SEGMENT_LENGTH', this%memoryPath)
+    call mem_allocate(this%tosegment, this%nodesuser, 'TOSEGMENT', this%memoryPath)
     call mem_allocate(this%idomain, this%nodesuser, 'IDOMAIN', this%memoryPath)
     !
     ! -- Allocate vertices array
-    call mem_allocate(this%vertices, 3, this%nvert, 'VERTICES', this%memoryPath)
-    call mem_allocate(this%fdc, this%nodesuser, 'FDC', this%memoryPath)
-    call mem_allocate(this%celllen, this%nodesuser, 'CELLLEN', this%memoryPath)
-    call mem_allocate(this%cellcenters, 3, this%nodesuser, 'CELLCENTERS', this%memoryPath)
-    call mem_allocate(this%centerverts, 2, this%nodesuser, 'CENTERVERTS', this%memoryPath)
-    call mem_allocate(this%iageom, this%nodesuser, 'IAGEOM', this%memoryPath)
-    call mem_allocate(this%iageocellnum, this%nodesuser, 'IAGEOCELLNUM', this%memoryPath) 
-    !cdl allocate(this%jametries(this%nsupportedgeoms))
+    if (this%nvert > 0) then
+      call mem_allocate(this%vertices, 3, this%nvert, 'VERTICES', this%memoryPath)
+      call mem_allocate(this%fdc, this%nodesuser, 'FDC', this%memoryPath)
+      call mem_allocate(this%cellxyz, 3, this%nodesuser, 'CELLXYZ', this%memoryPath)
+    end if
     !
     ! -- initialize all cells to be active (idomain = 1)
     do n = 1, this%nodesuser
+      this%segment_length(n) = DZERO
+      this%tosegment(n) = 0
       this%idomain(n) = 1
-      this%iageom(n) = 0
-      this%iageocellnum(n) = 0
-      this%celllen(n) = DZERO
     end do    
     !
     ! -- Return
@@ -318,6 +324,10 @@ contains
     idmMemoryPath = create_mem_path(this%name_model, 'DISL', idm_context)
     !
     ! -- update defaults with idm sourced values
+    call mem_set_value(this%segment_length, 'SEGMENT_LENGTH', idmMemoryPath, &
+                       found%segment_length)
+    call mem_set_value(this%tosegment, 'TOSEGMENT', idmMemoryPath, &
+                       found%tosegment)
     call mem_set_value(this%idomain, 'IDOMAIN', idmMemoryPath, found%idomain)
     !
     ! -- log simulation values
@@ -338,6 +348,14 @@ contains
 
     write (this%iout, '(1x,a)') 'Setting Discretization Griddata'
 
+    if (found%segment_length) then
+      write (this%iout, '(4x,a)') 'SEGMENT_LENGTH set from input file'
+    end if
+
+    if (found%tosegment) then
+      write (this%iout, '(4x,a)') 'TOSEGMENT set from input file'
+    end if
+
     if (found%idomain) then
       write (this%iout, '(4x,a)') 'IDOMAIN set from input file'
     end if
@@ -346,6 +364,9 @@ contains
 
   end subroutine log_griddata
 
+  !> @brief Copy vertex information from input data context
+  !! to model context
+  !<
   subroutine source_vertices(this)
     ! -- modules
     use MemoryManagerModule, only: mem_setptr
@@ -392,7 +413,10 @@ contains
     return
   end subroutine source_vertices
     
-  subroutine source_cell1d(this)
+  !> @brief Copy cell2d information from input data context
+  !! to model context
+  !<
+  subroutine source_cell2d(this)
     ! -- modules
     use MemoryHelperModule, only: create_mem_path
     use MemoryManagerModule, only: mem_setptr
@@ -402,7 +426,7 @@ contains
     class(SnfDislType) :: this
     ! -- locals
     character(len=LENMEMPATH) :: idmMemoryPath
-    integer(I4B), dimension(:), contiguous, pointer :: icell1d => null()
+    integer(I4B), dimension(:), contiguous, pointer :: icell2d => null()
     integer(I4B), dimension(:), contiguous, pointer :: ncvert => null()
     integer(I4B), dimension(:), contiguous, pointer :: icvert => null()
     real(DP), dimension(:), contiguous, pointer :: fdc => null()
@@ -413,14 +437,14 @@ contains
     idmMemoryPath = create_mem_path(this%name_model, 'DISL', idm_context)
     !
     ! -- set pointers to input path ncvert and icvert
-    call mem_setptr(icell1d, 'ICELL1D', idmMemoryPath)
+    call mem_setptr(icell2d, 'ICELL2D', idmMemoryPath)
     call mem_setptr(ncvert, 'NCVERT', idmMemoryPath)
     call mem_setptr(icvert, 'ICVERT', idmMemoryPath)
     !
     ! --
-    if (associated(icell1d) .and. associated(ncvert) &
+    if (associated(icell2d) .and. associated(ncvert) &
         .and. associated(icvert)) then
-      call this%define_cellverts(icell1d, ncvert, icvert)
+      call this%define_cellverts(icell2d, ncvert, icvert)
     else
       call store_error('Required cell vertex arrays not found.')
     end if
@@ -433,66 +457,52 @@ contains
       do i = 1, this%nodesuser
         this%fdc(i) = fdc(i)
       end do
+      call calculate_cellxyz(this%vertices, this%fdc, this%iavert, &
+                             this%javert, this%cellxyz)
     else
       call store_error('Required fdc array not found.')
     end if
     !
     ! -- log
     if (this%iout > 0) then
-      write (this%iout, '(1x,a)') 'Setting Discretization Cell1d'
-      write (this%iout, '(1x,a,/)') 'End Setting Discretization Cell1d'
+      write (this%iout, '(1x,a)') 'Setting Discretization CELL2D'
+      write (this%iout, '(1x,a,/)') 'End Setting Discretization CELL2D'
     end if
     !
     ! -- Return
     return
-  end subroutine source_cell1d
+  end subroutine source_cell2d
 
-  subroutine define_cellverts(this, icell1d, ncvert, icvert)
+  !> @brief Construct the iavert and javert integer vectors which
+  !! are compressed sparse row index arrays that relate the vertices
+  !! to segments
+  !<
+  subroutine define_cellverts(this, icell2d, ncvert, icvert)
     ! -- modules
     use SparseModule, only: sparsematrix
     ! -- dummy
     class(SnfDislType) :: this
-    integer(I4B), dimension(:), contiguous, pointer, intent(in) :: icell1d
+    integer(I4B), dimension(:), contiguous, pointer, intent(in) :: icell2d
     integer(I4B), dimension(:), contiguous, pointer, intent(in) :: ncvert
     integer(I4B), dimension(:), contiguous, pointer, intent(in) :: icvert
     ! -- locals
     type(sparsematrix) :: vert_spm
-    integer(I4B) :: i
-    integer(I4B) :: j
-    integer(I4B) :: k
-    integer(I4B) :: ierr
-    integer(I4B) :: icv_idx
-    integer(I4B) :: maxvert
-    integer(I4B) :: maxvertcell
-    integer(I4B) :: icurcell
-    logical(LGP) :: isfound
-    integer(I4B), dimension(:), pointer, contiguous :: vnumcells => null()
-    ! format
-    character(len=*), parameter :: fmtncpl = &
-      "(3x, 'Successfully read ',i0,' CELL1D information entries')"
-    character(len=*), parameter :: fmtmaxvert = &
-      "(3x, 'Maximum number of CELL2D vertices is ',i0,' for cell ', i0)"
-    character(len=*), parameter :: fmtvert = &
-      "('IAVERTCELLS does not contain the correct number of '" //   &
-      "' connections for vertex ', i0)"
-    !
-    ! -- initialize
-    maxvert = 0
-    maxvertcell = 0
+    integer(I4B) :: i, j, ierr
+    integer(I4B) :: icv_idx, startvert, maxnnz = 2
+! ------------------------------------------------------------------------------
     !
     ! -- initialize sparse matrix
-    call vert_spm%init(this%nodesuser, this%nvert, ncvert)
+    call vert_spm%init(this%nodesuser, this%nvert, maxnnz)
     !
     ! -- add sparse matrix connections from input memory paths
     icv_idx = 1
     do i = 1, this%nodesuser
-      if (icell1d(i) /= i) call store_error('ICELL1D input sequence violation.')
-      if(ncvert(i) > maxvert) then
-        maxvert = ncvert(i)
-        maxvertcell = i
-      endif
+      if (icell2d(i) /= i) call store_error('ICELL2D input sequence violation.')
       do j = 1, ncvert(i)
         call vert_spm%addconnection(i, icvert(icv_idx), 0)
+        if (j == 1) then
+          startvert = icvert(icv_idx)
+        end if
         icv_idx = icv_idx + 1
       end do
     end do
@@ -501,61 +511,74 @@ contains
     call mem_allocate(this%iavert, this%nodesuser + 1, 'IAVERT', this%memoryPath)
     call mem_allocate(this%javert, vert_spm%nnz, 'JAVERT', this%memoryPath)
     call vert_spm%filliaja(this%iavert, this%javert, ierr)
-
-    ! allocate vertex to cellids map
-    call mem_allocate(this%iavertcells, this%nvert+1, 'IAVERTCELLS', this%memoryPath)
-    call mem_allocate(this%javertcells, vert_spm%nnz, 'JAVERTCELLS', this%memoryPath)
-    ! calculate number of cell connections for each vertex
-    allocate(vnumcells(this%nvert))
-    do j = 1, this%nvert
-      vnumcells(j) = 0
-    end do
-    do j = 1, vert_spm%nnz
-      vnumcells(this%javert(j)) = vnumcells(this%javert(j)) + 1
-    end do
-    ! build iavertcells
-    this%iavertcells(1) = 1
-    do j = 2, this%nvert
-      this%iavertcells(j) = this%iavertcells(j-1) + vnumcells(j-1)
-    end do
-    this%iavertcells(this%nvert+1) = vert_spm%nnz + 1
-    ! initialize javertcells
-    do j = 1, vert_spm%nnz
-      this%javertcells(j) = 0
-    end do
-    ! build javertcells
-    icurcell = 1
-    do j = 1, vert_spm%nnz
-      if (this%iavert(icurcell+1) == j) then
-        icurcell = icurcell + 1
-      end if
-      isfound = .false.
-      inner: do k = this%iavertcells(this%javert(j)), this%iavertcells(this%javert(j)+1) - 1
-        if (this%javertcells(k) == 0) then
-          ! fill the first available index and exit
-          this%javertcells(k) = icurcell
-          isfound = .TRUE.
-          exit inner
-        end if
-      end do inner
-      if (.not. isfound) then
-        write(errmsg, fmtvert) j
-        call store_error(errmsg, terminate=.true.)
-      endif
-    end do
-    !
-    ! clean up
-    deallocate(vnumcells)
     call vert_spm%destroy()
-    !
-    ! -- Write information
-    write(this%iout, fmtncpl) this%nodesuser
-    write(this%iout, fmtmaxvert) maxvert, maxvertcell
     !
     ! -- Return
     return
   end subroutine define_cellverts
 
+  !> @brief Calculate x, y, z coordinates of segment midpoint
+  !<
+  subroutine calculate_cellxyz(vertices, fdc, iavert, javert, cellxyz)
+    ! -- dummy
+    real(DP), dimension(:, :), intent(in) :: vertices !< 2d array of vertices with x, y, and z as columns
+    real(DP), dimension(:), intent(in) :: fdc  !< fractional distance to segment midpoint (normally 0.5)
+    integer(I4B), dimension(:), intent(in) :: iavert  !< csr mapping of vertices to cell segments
+    integer(I4B), dimension(:), intent(in) :: javert  !< csr mapping of vertices to cell segments
+    real(DP), dimension(:, :), intent(inout) :: cellxyz !< 2d array of segment midpoint with x, y, and z as columns
+    ! -- local
+    integer(I4B) :: nodes !< number of nodes
+    integer(I4B) :: n !< node index
+    integer(I4B) :: j !< vertex index
+    integer(I4B) :: iv0 !< index for line segment start
+    integer(I4B) :: iv1 !< index for linen segment end
+    integer(I4B) :: ixyz !< x, y, z column index
+    real(DP) :: segment_length !< segment length = sum of individual line segments
+    real(DP) :: fd0 !< fractional distance to start of this line segment
+    real(DP) :: fd1 !< fractional distance to end fo this line segment
+    real(DP) :: fd !< fractional distance where midpoint (defined by fdc) is located
+    real(DP) :: d !< distance
+
+    nodes = size(iavert) - 1
+    do n = 1, nodes
+
+      ! calculate length of this segment
+      segment_length = DZERO
+      do j = iavert(n), iavert(n + 1) - 2
+        segment_length = segment_length + &
+                         calcdist(vertices, javert(j), javert(j + 1))
+      end do
+
+      ! find vertices that span midpoint
+      iv0 = 0
+      iv1 = 0
+      fd0 = DZERO
+      do j = iavert(n), iavert(n + 1) - 2
+        d = calcdist(vertices, javert(j), javert(j + 1))
+        fd1 = fd0 + d / segment_length
+
+        ! if true, then we know the midpoint is some fractional distance (fd)
+        ! from vertex j to vertex j + 1
+        if (fd1 >= fdc(n)) then
+          iv0 = javert(j)
+          iv1 = javert(j + 1)
+          fd = (fdc(n) - fd0) / (fd1 - fd0)
+          exit
+        end if
+        fd0 = fd1
+      end do
+
+      ! find x, y, z position of point on line
+      do ixyz = 1, 3
+        cellxyz(ixyz, n) = (DONE - fd) * vertices(ixyz, iv0) + &
+                        fd * vertices(ixyz, iv1)
+      end do
+
+    end do
+  end subroutine calculate_cellxyz
+
+  !> @brief Finalize grid construction
+  !<
   subroutine grid_finalize(this)
     ! -- modules
     use SimModule, only: ustop, count_errors, store_error
@@ -563,9 +586,7 @@ contains
     ! -- dummy
     class(SnfDislType) :: this
     ! -- locals
-    integer(I4B) :: node, noder, j, k
-    real(DP) :: curlen, seglen
-    real(DP) :: cendist, segpercent
+    integer(I4B) :: node, noder, k
     ! -- formats
     character(len=*), parameter :: fmtdz = &
       "('ERROR. CELL (',i0,',',i0,') THICKNESS <= 0. ', " //             &
@@ -632,53 +653,6 @@ contains
       enddo
     endif
 
-    ! calculate and fill cell center array
-    do k = 1, this%nodesuser
-      ! calculate node length
-      do j = this%iavert(k), this%iavert(k+1) - 2
-        this%celllen(k) = this%celllen(k) + calcdist(this%vertices, this%javert(j), &
-          this%javert(j+1))
-      end do
-
-      ! calculate distance from start of node to cell center
-      cendist = this%celllen(k) * this%fdc(k)
-      ! calculate cell center location
-      curlen = DZERO
-      ! loop through cell's vertices
-      inner: do j = this%iavert(k), this%iavert(k+1) - 2
-        seglen = calcdist(this%vertices, this%javert(j), this%javert(j+1))
-        ! if cell center between vertex k and k+1
-        if (seglen + curlen >= cendist) then
-            ! calculate cell center locations
-            segpercent = (cendist - curlen) / seglen
-            this%cellcenters(1, k) = partialdist(this%vertices(1,   &
-              this%javert(j)), this%vertices(1, this%javert(j+1)),  &
-              segpercent)
-            this%cellcenters(2, k) = partialdist(this%vertices(2,   &
-              this%javert(j)), this%vertices(2, this%javert(j+1)),  &
-              segpercent)
-            this%cellcenters(3, k) = partialdist(this%vertices(3,   &
-              this%javert(j)), this%vertices(3, this%javert(j+1)),  &
-              segpercent)
-            ! record vertices that cell center is between
-            if (abs(segpercent - DONE) < 0.00001) then
-              this%centerverts(1, k) = this%javert(j+1)
-              this%centerverts(2, k) = 0
-            else if (abs(segpercent - DZERO) < 0.00001) then
-              this%centerverts(1, k) = this%javert(j)
-              this%centerverts(2, k) = 0
-            else
-              this%centerverts(1, k) = this%javert(j)
-              this%centerverts(2, k) = this%javert(j+1)
-            end if
-            exit inner
-        end if
-        curlen = curlen + seglen
-      end do inner
-    end do
-    !
-    ! -- Build connections
-    call this%connect()
     ! -- Return
     return
   end subroutine grid_finalize
@@ -709,7 +683,7 @@ contains
     return
   end subroutine allocate_arrays  
 
-  subroutine connect(this)
+  subroutine create_connections(this)
     ! -- modules
     ! -- dummy
     class(SnfDislType) :: this
@@ -719,151 +693,173 @@ contains
     ! -- create and fill the connections object
     nrsize = 0
     if(this%nodes < this%nodesuser) nrsize = this%nodes
+    !
+    ! -- Allocate connections object
     allocate(this%con)
-    ! SRP TODO: connections need geometry info
-    call this%con%dislconnections(this%name_model, this%nodes, this%nodesuser, &
-                                  nrsize, this%nvert, this%vertices,           &
-                                  this%iavert, this%javert, this%iavertcells,  &
-                                  this%javertcells, this%cellcenters,          &
-                                  this%centerverts, this%fdc,                  &
-                                  this%nodereduced, this%nodeuser)
+
+    call this%con%dislconnections(this%name_model, this%tosegment)
     this%nja = this%con%nja
     this%njas = this%con%njas
     !
     !
     ! -- return
     return
-  end subroutine connect
+  end subroutine create_connections
 
+  !> @brief Write binary grid file
+  !<
   subroutine write_grb(this, icelltype)
-! ******************************************************************************
-! write_grb -- Write the binary grid file
-! ******************************************************************************
-!
-!    SPECIFICATIONS:
-! ------------------------------------------------------------------------------
     ! -- modules
     use InputOutputModule, only: getunit, openfile
     use OpenSpecModule, only: access, form
-    use ConstantsModule, only: DZERO
     ! -- dummy
     class(SnfDislType) :: this
     integer(I4B), dimension(:), intent(in) :: icelltype
     ! -- local
-    integer(I4B) :: iunit, ntxt
+    integer(I4B) :: i, iunit, ntxt
     integer(I4B), parameter :: lentxt = 100
     character(len=50) :: txthdr
     character(len=lentxt) :: txt
     character(len=LINELENGTH) :: fname
-    character(len=*),parameter :: fmtgrdsave = &
-      "(4X,'BINARY GRID INFORMATION WILL BE WRITTEN TO:',                      &
+    character(len=*), parameter :: fmtgrdsave = &
+      "(4X,'BINARY GRID INFORMATION WILL BE WRITTEN TO:', &
        &/,6X,'UNIT NUMBER: ', I0,/,6X, 'FILE NAME: ', A)"
-! ------------------------------------------------------------------------------
     !
     ! -- Initialize
-    ntxt = 17
+    ntxt = 10
+    if (this%nvert > 0) ntxt = ntxt + 5
     !
     ! -- Open the file
-    inquire(unit=this%inunit, name=fname)
-    fname = trim(fname) // '.grb'
+    inquire (unit=this%inunit, name=fname)
+    fname = trim(fname)//'.grb'
     iunit = getunit()
-    write(this%iout, fmtgrdsave) iunit, trim(adjustl(fname))
-    call openfile(iunit, this%iout, trim(adjustl(fname)), 'DATA(BINARY)',      &
+    write (this%iout, fmtgrdsave) iunit, trim(adjustl(fname))
+    call openfile(iunit, this%iout, trim(adjustl(fname)), 'DATA(BINARY)', &
                   form, access, 'REPLACE')
     !
     ! -- write header information
-    write(txthdr, '(a)') 'GRID DISL'
+    write (txthdr, '(a)') 'GRID DISL'
     txthdr(50:50) = new_line('a')
-    write(iunit) txthdr
-    write(txthdr, '(a)') 'VERSION 1'
+    write (iunit) txthdr
+    write (txthdr, '(a)') 'VERSION 1'
     txthdr(50:50) = new_line('a')
-    write(iunit) txthdr
-    write(txthdr, '(a, i0)') 'NTXT ', ntxt
+    write (iunit) txthdr
+    write (txthdr, '(a, i0)') 'NTXT ', ntxt
     txthdr(50:50) = new_line('a')
-    write(iunit) txthdr
-    write(txthdr, '(a, i0)') 'LENTXT ', lentxt
+    write (iunit) txthdr
+    write (txthdr, '(a, i0)') 'LENTXT ', lentxt
     txthdr(50:50) = new_line('a')
-    write(iunit) txthdr
+    write (iunit) txthdr
     !
     ! -- write variable definitions
-    write(txt, '(3a, i0)') 'NCELLS ', 'INTEGER ', 'NDIM 0 # ', this%nodesuser
+    write (txt, '(3a, i0)') 'NODES ', 'INTEGER ', 'NDIM 0 # ', this%nodesuser
     txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'NVERT ', 'INTEGER ', 'NDIM 0 # ', this%nvert
+    write (iunit) txt
+    write (txt, '(3a, i0)') 'NJA ', 'INTEGER ', 'NDIM 0 # ', this%con%nja
     txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'NJAVERT ', 'INTEGER ', 'NDIM 0 # ', size(this%javert)
+    write (iunit) txt
+    write (txt, '(3a, 1pg24.15)') 'XORIGIN ', 'DOUBLE ', 'NDIM 0 # ', this%xorigin
     txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'NJA ', 'INTEGER ', 'NDIM 0 # ', this%con%nja
+    write (iunit) txt
+    write (txt, '(3a, 1pg24.15)') 'YORIGIN ', 'DOUBLE ', 'NDIM 0 # ', this%yorigin
     txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, 1pg25.15e3)') 'XORIGIN ', 'DOUBLE ', 'NDIM 0 # ', this%xorigin
+    write (iunit) txt
+    write (txt, '(3a, 1pg24.15)') 'ANGROT ', 'DOUBLE ', 'NDIM 0 # ', this%angrot
     txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, 1pg25.15e3)') 'YORIGIN ', 'DOUBLE ', 'NDIM 0 # ', this%yorigin
+    write (iunit) txt
+    write (txt, '(3a, i0)') 'IA ', 'INTEGER ', 'NDIM 1 ', this%nodesuser + 1
     txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, 1pg25.15e3)') 'ANGROT ', 'DOUBLE ', 'NDIM 0 # ', this%angrot
+    write (iunit) txt
+    write (txt, '(3a, i0)') 'JA ', 'INTEGER ', 'NDIM 1 ', this%con%nja
     txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'VERTICES ', 'DOUBLE ', 'NDIM 2 2 ', this%nvert
+    write (iunit) txt
+    write (txt, '(3a, i0)') 'ICELLTYPE ', 'INTEGER ', 'NDIM 1 ', this%nodesuser
     txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'FDC ', 'DOUBLE ', 'NDIM 1 ', this%nodesuser
+    write (iunit) txt
+    write (txt, '(3a, i0)') 'IDOMAIN   ', 'INTEGER ', 'NDIM 1 ', this%nodesuser
     txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'IAVERT ', 'INTEGER ', 'NDIM 1 ', this%nodesuser + 1
-    txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'JAVERT ', 'INTEGER ', 'NDIM 1 ', size(this%javert)
-    txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'IAVERTCELLS ', 'INTEGER ', 'NDIM 1 ', size(this%iavertcells)
-    txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'JAVERTCELLS ', 'INTEGER ', 'NDIM 1 ', size(this%javertcells)
-    txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'IA ', 'INTEGER ', 'NDIM 1 ', this%nodesuser + 1
-    txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'JA ', 'INTEGER ', 'NDIM 1 ', size(this%con%jausr)
-    txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'IDOMAIN ', 'INTEGER ', 'NDIM 1 ', this%nodesuser
-    txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
-    write(txt, '(3a, i0)') 'ICELLTYPE ', 'INTEGER ', 'NDIM 1 ', this%nodesuser
-    txt(lentxt:lentxt) = new_line('a')
-    write(iunit) txt
+    write (iunit) txt
+    !
+    ! -- if vertices have been read then write additional header information
+    if (this%nvert > 0) then
+      write (txt, '(3a, i0)') 'VERTICES ', 'DOUBLE ', 'NDIM 2 3 ', this%nvert
+      txt(lentxt:lentxt) = new_line('a')
+      write (iunit) txt
+      write (txt, '(3a, i0)') 'CELLX ', 'DOUBLE ', 'NDIM 1 ', this%nodesuser
+      txt(lentxt:lentxt) = new_line('a')
+      write (iunit) txt
+      write (txt, '(3a, i0)') 'CELLY ', 'DOUBLE ', 'NDIM 1 ', this%nodesuser
+      txt(lentxt:lentxt) = new_line('a')
+      write (iunit) txt
+      write (txt, '(3a, i0)') 'CELLZ ', 'DOUBLE ', 'NDIM 1 ', this%nodesuser
+      txt(lentxt:lentxt) = new_line('a')
+      write (iunit) txt
+      write (txt, '(3a, i0)') 'IAVERT ', 'INTEGER ', 'NDIM 1 ', this%nodesuser + 1
+      txt(lentxt:lentxt) = new_line('a')
+      write (iunit) txt
+      write (txt, '(3a, i0)') 'JAVERT ', 'INTEGER ', 'NDIM 1 ', size(this%javert)
+      txt(lentxt:lentxt) = new_line('a')
+      write (iunit) txt
+    end if
     !
     ! -- write data
-    write(iunit) this%nodesuser                                                 ! ncells
-    write(iunit) this%nvert                                                     ! nvert
-    write(iunit) size(this%javert)                                              ! njavert
-    write(iunit) this%nja                                                       ! nja
-    write(iunit) this%xorigin                                                   ! xorigin
-    write(iunit) this%yorigin                                                   ! yorigin
-    write(iunit) this%angrot                                                    ! angrot
-    write(iunit) this%vertices                                                  ! vertices
-    write(iunit) this%fdc                                                       ! fdc
-    write(iunit) this%iavert                                                    ! iavert
-    write(iunit) this%javert                                                    ! javert
-    write(iunit) this%iavertcells                                               ! iavert
-    write(iunit) this%javertcells                                               ! javert
-    write(iunit) this%con%iausr                                                 ! iausr
-    write(iunit) this%con%jausr                                                 ! jausr
-    write(iunit) this%idomain                                                   ! idomain
-    write(iunit) icelltype                                                      ! icelltype
+    write (iunit) this%nodesuser ! nodes
+    write (iunit) this%nja ! nja
+    write (iunit) this%xorigin ! xorigin
+    write (iunit) this%yorigin ! yorigin
+    write (iunit) this%angrot ! angrot
+    write (iunit) this%con%iausr ! ia
+    write (iunit) this%con%jausr ! ja
+    write (iunit) icelltype ! icelltype
+    write (iunit) this%idomain ! idomain
+    !
+    ! -- if vertices have been read then write additional data
+    if (this%nvert > 0) then
+      write (iunit) this%vertices ! vertices
+      write (iunit) (this%cellxyz(1, i), i=1, this%nodesuser) ! cellx
+      write (iunit) (this%cellxyz(2, i), i=1, this%nodesuser) ! celly
+      write (iunit) (this%cellxyz(3, i), i=1, this%nodesuser) ! cellz
+      write (iunit) this%iavert ! iavert
+      write (iunit) this%javert ! javert
+    end if
     !
     ! -- Close the file
-    close(iunit)
+    close (iunit)
     !
     ! -- return
     return
   end subroutine write_grb
-  
+
+  !>
+  !! Return a nodenumber from the user specified node number with an 
+  !! option to perform a check.  This subroutine can be overridden by 
+  !! child classes to perform mapping to a model node number
+  !<
+  function get_nodenumber_idx1(this, nodeu, icheck) result(nodenumber)
+    class(SnfDislType), intent(in) :: this
+    integer(I4B), intent(in) :: nodeu
+    integer(I4B), intent(in) :: icheck
+    integer(I4B) :: nodenumber
+    !
+    if (icheck /= 0) then
+      if (nodeu < 1 .or. nodeu > this%nodes) then
+        write (errmsg, '(a,i10)') &
+          'Nodenumber less than 1 or greater than nodes:', nodeu
+        call store_error(errmsg)
+      end if
+    end if
+    !
+    ! -- set node number based on wheter it is reduced or not
+    if (this%nodes == this%nodesuser) then
+      nodenumber = nodeu
+    else
+      nodenumber = this%nodereduced(nodeu)
+    end if
+    !
+    ! -- return
+    return
+  end function get_nodenumber_idx1
+
   subroutine nodeu_to_string(this, nodeu, str)
     ! -- dummy
     class(SnfDislType) :: this
@@ -886,6 +882,8 @@ contains
     use SimVariablesModule, only: idm_context
     ! -- dummy
     class(SnfDislType) :: this
+    ! -- local
+    logical(LGP) :: deallocate_vertices
     !
     ! -- Deallocate idm memory
     call memorylist_remove(this%name_model, 'DISL', idm_context)
@@ -893,27 +891,26 @@ contains
                            context=idm_context)
     !
     ! -- scalars
+    deallocate_vertices = (this%nvert > 0)
     call mem_deallocate(this%nvert)
-    call mem_deallocate(this%nsupportedgeoms)
-    call mem_deallocate(this%nactivegeoms)
     call mem_deallocate(this%convlength)
     call mem_deallocate(this%convtime)
     !
     ! -- arrays
     call mem_deallocate(this%nodeuser)
     call mem_deallocate(this%nodereduced)
+    call mem_deallocate(this%segment_length)
+    call mem_deallocate(this%tosegment)
     call mem_deallocate(this%idomain)
-    call mem_deallocate(this%vertices)
-    call mem_deallocate(this%fdc)
-    call mem_deallocate(this%celllen)
-    call mem_deallocate(this%cellcenters)
-    call mem_deallocate(this%centerverts)
-    call mem_deallocate(this%iageom)
-    call mem_deallocate(this%iageocellnum) 
-    call mem_deallocate(this%iavert)
-    call mem_deallocate(this%javert)
-    call mem_deallocate(this%iavertcells)
-    call mem_deallocate(this%javertcells)
+    !
+    ! -- cdl hack for arrays for vertices and cell2d blocks
+    if (deallocate_vertices) then
+      call mem_deallocate(this%vertices)
+      call mem_deallocate(this%fdc)
+      call mem_deallocate(this%cellxyz)
+      call mem_deallocate(this%iavert)
+      call mem_deallocate(this%javert)
+    end if
     !
     ! -- DisBaseType deallocate
     call this%DisBaseType%dis_da()

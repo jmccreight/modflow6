@@ -1,4 +1,4 @@
 BEGIN DIMENSIONS
   NODES <nodes>
-  NVERT <nvert>
+  [NVERT <nvert>]
 END DIMENSIONS

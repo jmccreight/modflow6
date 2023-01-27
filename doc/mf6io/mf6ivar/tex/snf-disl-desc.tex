@@ -29,6 +29,10 @@
 \item \textbf{Block: GRIDDATA}
 
 \begin{description}
+\item \texttt{segment\_length}---length for each segment
+
+\item \texttt{tosegment}---index of downstream segment to which the segment streamflow flows, for segments that do not flow to another segment enter 0
+
 \item \texttt{idomain}---is an optional array that characterizes the existence status of a cell.  If the IDOMAIN array is not specified, then all model cells exist within the solution.  If the IDOMAIN value for a cell is 0, the cell does not exist in the simulation.  Input and output values will be read and written for the cell, but internal to the program, the cell is excluded from the solution.  If the IDOMAIN value for a cell is 1, the cell exists in the simulation.
 
 \end{description}
@@ -44,10 +48,10 @@
 \item \texttt{zv}---is the z-coordinate for the vertex.
 
 \end{description}
-\item \textbf{Block: CELL1D}
+\item \textbf{Block: CELL2D}
 
 \begin{description}
-\item \texttt{icell1d}---is the cell1d number.  Records in the cell1d block must be listed in consecutive order from the first to the last.
+\item \texttt{icell2d}---is the cell2d number.  Records in the cell2d block must be listed in consecutive order from the first to the last.
 
 \item \texttt{fdc}---is the fractional distance to the cell center. FDC is relative to the first vertex in the ICVERT array. In most cases FDC should be 0.5, which would place the center of the line segment that defines the cell. If the value of FDC is 1, the cell center would located at the last vertex. FDC values of 0 and 1 can be used to place the node at either end of the cell which can be useful for cells with boundary conditions.
 

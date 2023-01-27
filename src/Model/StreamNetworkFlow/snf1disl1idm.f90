@@ -17,12 +17,14 @@ module SnfDislInputModule
     logical :: angrot = .false.
     logical :: nodes = .false.
     logical :: nvert = .false.
+    logical :: segment_length = .false.
+    logical :: tosegment = .false.
     logical :: idomain = .false.
     logical :: iv = .false.
     logical :: xv = .false.
     logical :: yv = .false.
     logical :: zv = .false.
-    logical :: icell1d = .false.
+    logical :: icell2d = .false.
     logical :: fdc = .false.
     logical :: ncvert = .false.
     logical :: icvert = .false.
@@ -166,6 +168,38 @@ module SnfDislInputModule
     'NVERT', & ! fortran variable
     'INTEGER', & ! type
     '', & ! shape
+    .false., & ! required
+    .false., & ! multi-record
+    .false., & ! preserve case
+    .false. & ! layered
+    )
+
+  type(InputParamDefinitionType), parameter :: &
+    snfdisl_segment_length = InputParamDefinitionType &
+    ( &
+    'SNF', & ! component
+    'DISL', & ! subcomponent
+    'GRIDDATA', & ! block
+    'SEGMENT_LENGTH', & ! tag name
+    'SEGMENT_LENGTH', & ! fortran variable
+    'DOUBLE1D', & ! type
+    'NODES', & ! shape
+    .true., & ! required
+    .false., & ! multi-record
+    .false., & ! preserve case
+    .false. & ! layered
+    )
+
+  type(InputParamDefinitionType), parameter :: &
+    snfdisl_tosegment = InputParamDefinitionType &
+    ( &
+    'SNF', & ! component
+    'DISL', & ! subcomponent
+    'GRIDDATA', & ! block
+    'TOSEGMENT', & ! tag name
+    'TOSEGMENT', & ! fortran variable
+    'INTEGER1D', & ! type
+    'NODES', & ! shape
     .true., & ! required
     .false., & ! multi-record
     .false., & ! preserve case
@@ -253,13 +287,13 @@ module SnfDislInputModule
     )
 
   type(InputParamDefinitionType), parameter :: &
-    snfdisl_icell1d = InputParamDefinitionType &
+    snfdisl_icell2d = InputParamDefinitionType &
     ( &
     'SNF', & ! component
     'DISL', & ! subcomponent
-    'CELL1D', & ! block
-    'ICELL1D', & ! tag name
-    'ICELL1D', & ! fortran variable
+    'CELL2D', & ! block
+    'ICELL2D', & ! tag name
+    'ICELL2D', & ! fortran variable
     'INTEGER', & ! type
     '', & ! shape
     .true., & ! required
@@ -273,7 +307,7 @@ module SnfDislInputModule
     ( &
     'SNF', & ! component
     'DISL', & ! subcomponent
-    'CELL1D', & ! block
+    'CELL2D', & ! block
     'FDC', & ! tag name
     'FDC', & ! fortran variable
     'DOUBLE', & ! type
@@ -289,7 +323,7 @@ module SnfDislInputModule
     ( &
     'SNF', & ! component
     'DISL', & ! subcomponent
-    'CELL1D', & ! block
+    'CELL2D', & ! block
     'NCVERT', & ! tag name
     'NCVERT', & ! fortran variable
     'INTEGER', & ! type
@@ -305,7 +339,7 @@ module SnfDislInputModule
     ( &
     'SNF', & ! component
     'DISL', & ! subcomponent
-    'CELL1D', & ! block
+    'CELL2D', & ! block
     'ICVERT', & ! tag name
     'ICVERT', & ! fortran variable
     'INTEGER1D', & ! type
@@ -328,12 +362,14 @@ module SnfDislInputModule
     snfdisl_angrot, &
     snfdisl_nodes, &
     snfdisl_nvert, &
+    snfdisl_segment_length, &
+    snfdisl_tosegment, &
     snfdisl_idomain, &
     snfdisl_iv, &
     snfdisl_xv, &
     snfdisl_yv, &
     snfdisl_zv, &
-    snfdisl_icell1d, &
+    snfdisl_icell2d, &
     snfdisl_fdc, &
     snfdisl_ncvert, &
     snfdisl_icvert &
@@ -356,14 +392,14 @@ module SnfDislInputModule
     )
 
   type(InputParamDefinitionType), parameter :: &
-    snfdisl_cell1d = InputParamDefinitionType &
+    snfdisl_cell2d = InputParamDefinitionType &
     ( &
     'SNF', & ! component
     'DISL', & ! subcomponent
-    'CELL1D', & ! block
-    'CELL1D', & ! tag name
-    'CELL1D', & ! fortran variable
-    'RECARRAY ICELL1D FDC NCVERT ICVERT', & ! type
+    'CELL2D', & ! block
+    'CELL2D', & ! tag name
+    'CELL2D', & ! fortran variable
+    'RECARRAY ICELL2D FDC NCVERT ICVERT', & ! type
     'NODES', & ! shape
     .true., & ! required
     .false., & ! multi-record
@@ -375,7 +411,7 @@ module SnfDislInputModule
     snf_disl_aggregate_definitions(*) = &
     [ &
     snfdisl_vertices, &
-    snfdisl_cell1d &
+    snfdisl_cell2d &
     ]
 
   type(InputBlockDefinitionType), parameter :: &
@@ -393,7 +429,7 @@ module SnfDislInputModule
     ), &
     InputBlockDefinitionType( &
     'GRIDDATA', & ! blockname
-    .false., & ! required
+    .true., & ! required
     .false. & ! aggregate
     ), &
     InputBlockDefinitionType( &
@@ -402,7 +438,7 @@ module SnfDislInputModule
     .true. & ! aggregate
     ), &
     InputBlockDefinitionType( &
-    'CELL1D', & ! blockname
+    'CELL2D', & ! blockname
     .true., & ! required
     .true. & ! aggregate
     ) &

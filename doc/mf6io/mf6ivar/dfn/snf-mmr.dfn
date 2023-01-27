@@ -45,18 +45,6 @@ longname surface slope
 description surface slope of each segment
 
 block griddata
-name tosegment
-type integer
-shape (nodes)
-valid
-reader readarray
-layered false
-optional
-longname index of the downstream segment
-description index of downstream segment to which the segment streamflow flows, for segments that do not flow to another segment enter 0
-numeric_index true
-
-block griddata
 name x_coef
 type double precision
 shape (nodes)

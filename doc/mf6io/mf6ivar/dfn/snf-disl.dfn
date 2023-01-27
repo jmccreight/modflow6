@@ -70,11 +70,34 @@ block dimensions
 name nvert
 type integer
 reader urword
-optional false
+optional true
 longname number of columns
 description is the total number of (x, y, z) vertex pairs used to characterize the model grid.
 
 # --------------------- snf disl griddata ---------------------
+
+block griddata
+name segment_length
+type double precision
+shape (nodes)
+valid
+reader readarray
+layered false
+optional
+longname segment length
+description length for each segment
+
+block griddata
+name tosegment
+type integer
+shape (nodes)
+valid
+reader readarray
+layered false
+optional
+longname index of the downstream segment
+description index of downstream segment to which the segment streamflow flows, for segments that do not flow to another segment enter 0
+numeric_index true
 
 block griddata
 name idomain
@@ -140,29 +163,29 @@ longname z-coordinate for vertex
 description is the z-coordinate for the vertex.
 
 
-# --------------------- snf disl cell1d ---------------------
+# --------------------- snf disl cell2d ---------------------
 
-block cell1d
-name cell1d
-type recarray icell1d fdc ncvert icvert
+block cell2d
+name cell2d
+type recarray icell2d fdc ncvert icvert
 shape (nodes)
 reader urword
 optional false
-longname cell1d data
+longname cell2d data
 description
 
-block cell1d
-name icell1d
+block cell2d
+name icell2d
 type integer
 in_record true
 tagged false
 reader urword
 optional false
-longname cell1d number
-description is the cell1d number.  Records in the cell1d block must be listed in consecutive order from the first to the last.
+longname cell2d number
+description is the cell2d number.  Records in the cell2d block must be listed in consecutive order from the first to the last.
 numeric_index true
 
-block cell1d
+block cell2d
 name fdc
 type double precision
 in_record true
@@ -172,7 +195,7 @@ optional false
 longname fractional distance to the cell center
 description is the fractional distance to the cell center. FDC is relative to the first vertex in the ICVERT array. In most cases FDC should be 0.5, which would place the center of the line segment that defines the cell. If the value of FDC is 1, the cell center would located at the last vertex. FDC values of 0 and 1 can be used to place the node at either end of the cell which can be useful for cells with boundary conditions.
 
-block cell1d
+block cell2d
 name ncvert
 type integer
 in_record true
@@ -182,7 +205,7 @@ optional false
 longname number of cell vertices
 description is the number of vertices required to define the cell.  There may be a different number of vertices for each cell.
 
-block cell1d
+block cell2d
 name icvert
 type integer
 shape (ncvert)

@@ -5,8 +5,6 @@ BEGIN GRIDDATA
     <seg_depth(nodes)> -- READARRAY
   SEG_SLOPE
     <seg_slope(nodes)> -- READARRAY
-  TOSEGMENT
-    <tosegment(nodes)> -- READARRAY
   X_COEF
     <x_coef(nodes)> -- READARRAY
 END GRIDDATA

@@ -30,6 +30,7 @@ module SnfModule
     procedure :: model_da => snf_da
     procedure :: model_solve => snf_solve !< routine for solving this model for the current time step
     procedure :: package_create
+    procedure :: ftype_check
     procedure :: load_input_context => snf_load_input_context
   end type SnfModelType
 
@@ -65,7 +66,7 @@ module SnfModule
     integer(I4B), intent(in) :: id
     character(len=*), intent(in) :: modelname
     ! -- local
-    integer(I4B) :: indis, indisl6
+    integer(I4B) :: indisl
     integer(I4B) :: ipakid, i, j, iu, ipaknum
     character(len=LENPACKAGENAME) :: pakname
     type(NameFileType) :: namefile_obj
@@ -136,32 +137,31 @@ module SnfModule
     ! -- Assign unit numbers to attached modules, and remove
     ! -- from unitnumber (by specifying 1 for iremove)
     !
-    indis = 0
-    indisl6 = 0
-    call namefile_obj%get_unitnumber('DISL6', indisl6, 1)
-    if (indisl6 > 0) indis = indisl6
-    ! call namefile_obj%get_unitnumber('IC6', this%inic, 1)
-    ! call namefile_obj%get_unitnumber('OC6', this%inoc, 1)
+    indisl = 0
+    call namefile_obj%get_unitnumber('DISL6', indisl, 1)
     call namefile_obj%get_unitnumber('MMR6', this%inmmr, 1)
     ! call namefile_obj%get_unitnumber('OBS6', this%inobs, 1)
     !
     ! -- Check to make sure that required ftype's have been specified
-    ! call this%ftype_check(namefile_obj, indis)
+    call this%ftype_check(namefile_obj, indisl)
     !
     ! -- Create discretization object
-    if (indisl6 > 0) then
-      call this%load_input_context('DISL6', this%name, 'DISL', indis, this%iout)
-      call disl_cr(this%dis, this%name, indis, this%iout)
+    if (indisl > 0) then
+      call this%load_input_context('DISL6', this%name, 'DISL', indisl, &
+                                   this%iout)
+      call disl_cr(this%dis, this%name, indisl, this%iout)
     end if
     !
     ! -- Create utility objects
     !call budget_cr(this%budget, this%name)
     !
-    ! -- Load input context for currently supported packages
-    call this%load_input_context('MMR6', this%name, 'MMR', this%inmmr, this%iout)
+    ! -- Muskingum Manning Routing Package
+    if (this%inmmr > 0) then
+      call this%load_input_context('MMR6', this%name, 'MMR', this%inmmr, this%iout)
+      call mmr_cr(this%mmr, this%name, this%inmmr, this%dis, this%iout)
+    end if
     !
     ! -- Create packages that are tied directly to model
-    call mmr_cr(this%mmr, this%name, this%inmmr, this%dis, this%iout)
     ! call ic_cr(this%ic, this%name, this%inic, this%iout, this%dis)
     ! call oc_cr(this%oc, this%name, this%inoc, this%iout)
     ! call snf_obs_cr(this%obs, this%inobs)
@@ -274,19 +274,17 @@ module SnfModule
     ! -- dummy
     class(SnfModelType) :: this
     ! -- locals
+    integer(I4B), dimension(:), allocatable :: itemp
     integer(I4B) :: ip
     class(BndType), pointer :: packobj
     !
     ! -- Allocate and read modules attached to model
-    ! if (this%inic > 0) call this%ic%ic_ar(this%x)
-    ! if (this%innpf > 0) call this%npf%npf_ar(this%ic, this%vsc, this%ibound, &
-    !                                          this%x)
-    ! if (this%insto > 0) call this%sto%sto_ar(this%dis, this%ibound)
-    ! if (this%inmvr > 0) call this%mvr%mvr_ar()
     ! if (this%inobs > 0) call this%obs%gwf_obs_ar(this%ic, this%x, this%flowja)
     !
     ! -- Call dis_ar to write binary grid file
-    ! call this%dis%dis_ar(this%npf%icelltype)
+    allocate(itemp(this%dis%nodes))
+    call this%dis%dis_ar(itemp)
+    deallocate(itemp)
     !
     ! -- set up output control
     ! call this%oc%oc_ar(this%x, this%dis, this%npf%hnoflo)
@@ -424,6 +422,62 @@ module SnfModule
     ! -- return
     return
   end subroutine package_create
+
+  !> @brief Check to make sure required input files have been specified
+  subroutine ftype_check(this, namefile_obj, indis)
+    ! -- modules
+    use ConstantsModule, only: LINELENGTH
+    use SimModule, only: store_error, count_errors
+    use NameFileModule, only: NameFileType
+    ! -- dummy
+    class(SnfModelType) :: this
+    type(NameFileType), intent(in) :: namefile_obj
+    integer(I4B), intent(in) :: indis
+    ! -- local
+    integer(I4B) :: i, iu
+    character(len=LENFTYPE), dimension(4) :: nodupftype = &
+                                              (/'DISL6', 'MMR6 ', &
+                                                'OC6  ', 'OBS6 '/)
+! ------------------------------------------------------------------------------
+    !
+    ! -- Check for DISL, and MMR. Stop if not present.
+    if (indis == 0) then
+      write (errmsg, '(1x,a)') &
+        'Discretization (DISL6) Package not specified.'
+      call store_error(errmsg)
+    end if
+    if (this%inmmr == 0) then
+      write (errmsg, '(1x,a)') &
+        'Muskingum Manning Routing (MMR6) Package not specified.'
+      call store_error(errmsg)
+    end if
+    if (count_errors() > 0) then
+      write (errmsg, '(1x,a)') 'One or more required package(s) not specified.'
+      call store_error(errmsg)
+    end if
+    !
+    ! -- Check to make sure that some GWF packages are not specified more
+    !    than once
+    do i = 1, size(nodupftype)
+      call namefile_obj%get_unitnumber(trim(nodupftype(i)), iu, 0)
+      if (iu > 0) then
+        write (errmsg, '(1x, a, a, a)') &
+          'Duplicate entries for FTYPE ', trim(nodupftype(i)), &
+          ' not allowed for GWF Model.'
+        call store_error(errmsg)
+      end if
+    end do
+    !
+    ! -- Stop if errors
+    if (count_errors() > 0) then
+      write (errmsg, '(a, a)') 'Error occurred while reading file: ', &
+        trim(namefile_obj%filename)
+      call store_error(errmsg, terminate=.TRUE.)
+    end if
+    !
+    ! -- return
+    return
+  end subroutine ftype_check
 
   !> @brief Load input context for supported package
   !<

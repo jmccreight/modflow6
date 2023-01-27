@@ -1,4 +1,8 @@
 BEGIN GRIDDATA
+  SEGMENT_LENGTH
+    <segment_length(nodes)> -- READARRAY
+  TOSEGMENT
+    <tosegment(nodes)> -- READARRAY
   [IDOMAIN
     <idomain(nodes)> -- READARRAY]
 END GRIDDATA
