@@ -5,7 +5,7 @@
 !!
 !<
 module SnfFlwModule
-  ! -- modules used by WelModule methods
+  ! -- modules
   use KindModule, only: DP, I4B
   use ConstantsModule, only: DZERO, DEM1, DONE, LENFTYPE, DNODATA, MAXCHARLEN
   use SimVariablesModule, only: errmsg
@@ -47,7 +47,7 @@ contains
 
   !> @ brief Create a new package object
   !!
-  !!  Create a new WEL Package object
+  !!  Create a new FLW Package object
   !!
   !<
   subroutine flw_create(packobj, id, ibcnum, inunit, iout, namemodel, pakname)
@@ -55,7 +55,7 @@ contains
     class(BndType), pointer :: packobj !< pointer to default package type
     integer(I4B), intent(in) :: id !< package id
     integer(I4B), intent(in) :: ibcnum !< boundary condition number
-    integer(I4B), intent(in) :: inunit !< unit number of WEL package input file
+    integer(I4B), intent(in) :: inunit !< unit number of FLW package input file
     integer(I4B), intent(in) :: iout !< unit number of model listing file
     character(len=*), intent(in) :: namemodel !< model name
     character(len=*), intent(in) :: pakname !< package name
@@ -88,9 +88,9 @@ contains
   end subroutine flw_create
 
   !> @ brief Read additional options for package
-    !!
-    !!  Read additional options for WEL package.
-    !!
+  !!
+  !!  Read additional options for FLW package.
+  !!
   !<
   subroutine flw_options(this, option, found)
     ! -- modules
@@ -118,10 +118,10 @@ contains
   end subroutine flw_options
 
   !> @ brief Formulate the package hcof and rhs terms.
-    !!
-    !!  Formulate the hcof and rhs terms for the WEL package that will be
-    !!  added to the coefficient matrix and right-hand side vector.
-    !!
+  !!
+  !!  Formulate the hcof and rhs terms for the FLW package that will be
+  !!  added to the coefficient matrix and right-hand side vector.
+  !!
   !<
   subroutine flw_cf(this, reset_mover)
     ! -- dummy variables
@@ -132,7 +132,7 @@ contains
     real(DP) :: q
     logical :: lrm
     !
-    ! -- Return if no wells
+    ! -- Return if no inflows
     if (this%nbound == 0) return
     !
     ! -- pakmvrobj cf
@@ -142,7 +142,7 @@ contains
       call this%pakmvrobj%cf()
     end if
     !
-    ! -- Calculate hcof and rhs for each well entry
+    ! -- Calculate hcof and rhs for each flw entry
     do i = 1, this%nbound
       node = this%nodelist(i)
       this%hcof(i) = DZERO
@@ -158,10 +158,10 @@ contains
   end subroutine flw_cf
 
   !> @ brief Copy hcof and rhs terms into solution.
-    !!
-    !!  Add the hcof and rhs terms for the WEL package to the
-    !!  coefficient matrix and right-hand side vector.
-    !!
+  !!
+  !!  Add the hcof and rhs terms for the FLW package to the
+  !!  coefficient matrix and right-hand side vector.
+  !!
   !<
   subroutine flw_fc(this, rhs, ia, idxglo, matrix_sln)
     ! -- dummy variables
@@ -187,7 +187,7 @@ contains
       ipos = ia(n)
       call matrix_sln%add_value_pos(idxglo(ipos), this%hcof(i))
       !
-      ! -- If mover is active and this well is discharging,
+      ! -- If mover is active and this flw item is discharging,
       !    store available water (as positive value).
       if (this%imover == 1 .and. this%rhs(i) > DZERO) then
         call this%pakmvrobj%accumulate_qformvr(i, this%rhs(i))
@@ -199,10 +199,10 @@ contains
   end subroutine flw_fc
 
   !> @ brief Define the list label for the package
-    !!
-    !!  Method defined the list label for the WEL package. The list label is
-    !!  the heading that is written to iout when PRINT_INPUT option is used.
-    !!
+  !!
+  !!  Method defined the list label for the FLW package. The list label is
+  !!  the heading that is written to iout when PRINT_INPUT option is used.
+  !!
   !<
   subroutine define_listlabel(this)
     ! -- dummy variables
@@ -220,7 +220,7 @@ contains
     else
       write (this%listlabel, '(a, a7)') trim(this%listlabel), 'NODE'
     end if
-    write (this%listlabel, '(a, a16)') trim(this%listlabel), 'STRESS RATE'
+    write (this%listlabel, '(a, a16)') trim(this%listlabel), 'FLOW RATE'
     if (this%inamedbound == 1) then
       write (this%listlabel, '(a, a16)') trim(this%listlabel), 'BOUNDARY NAME'
     end if
@@ -232,12 +232,12 @@ contains
   ! -- Procedures related to observations
 
   !> @brief Determine if observations are supported.
-    !!
-    !! Function to determine if observations are supported by the WEL package.
-    !! Observations are supported by the WEL package.
-    !!
-    !! @return  flw_obs_supported       boolean indicating if observations are supported
-    !!
+  !!
+  !! Function to determine if observations are supported by the FLW package.
+  !! Observations are supported by the FLW package.
+  !!
+  !! @return  flw_obs_supported       boolean indicating if observations are supported
+  !!
   !<
   logical function flw_obs_supported(this)
     ! -- dummy variables
@@ -251,9 +251,9 @@ contains
   end function flw_obs_supported
 
   !> @brief Define the observation types available in the package
-    !!
-    !! Method to define the observation types available in the WEL package.
-    !!
+  !!
+  !! Method to define the observation types available in the FLW package.
+  !!
   !<
   subroutine flw_df_obs(this)
     ! -- dummy variables
@@ -275,9 +275,9 @@ contains
   end subroutine flw_df_obs
 
   !> @brief Save observations for the package
-    !!
-    !! Method to save simulated values for the WEL package.
-    !!
+  !!
+  !! Method to save simulated values for the FLW package.
+  !!
   !<
   subroutine flw_bd_obs(this)
     ! -- dummy variables

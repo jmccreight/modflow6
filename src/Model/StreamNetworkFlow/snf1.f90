@@ -1,4 +1,32 @@
 
+!> @brief Stream Network Flow (SNF) Module
+!!
+!! This module contains the SNF Model
+!!
+!! Status and remaining tasks
+!!   ONGOING -- Implement SNF infrastructure
+!!   DONE -- Implement Explicit Model Solution (EMS6) for handle explicit models
+!!   DONE -- Implement DISL Package
+!!   ONGOING -- Implement MMR Package
+!!   DONE -- Implement FLW Package to handle lateral and point inflows
+!!   Implement SNF and FLW advance routines to handle transient problems
+!!   Use MMR package to solve a flow problem in combination with DISL and FLW
+!!   Flopy support for DISL and DISL binary grid file
+!!   Need strategy for storing outflow terms and getting them into budget
+!!   Need strategy for calculating and storing storage terms and getting them into budget
+!!   Transfer results into the flowja vector
+!!   Observations
+!!   mf6io guide
+!!   Initial conditions?
+!!   Implement budget object
+!!   Implement output control
+!!   Deal with the timestep and subtiming issues
+!!   Rework the Iterative Model Solution (IMS6) to handle both implicit and explicit models
+!!   Mover support?
+!!   SNF-SNF Exchange
+!!   SNF-SNF Exchange in parallel
+!! 
+!<
 module SnfModule
 
   use KindModule, only: DP, I4B
@@ -27,6 +55,8 @@ module SnfModule
     procedure :: allocate_arrays
     procedure :: model_df => snf_df
     procedure :: model_ar => snf_ar
+    procedure :: model_rp => snf_rp
+    procedure :: model_ad => snf_ad
     procedure :: model_da => snf_da
     procedure :: model_solve => snf_solve !< routine for solving this model for the current time step
     procedure :: package_create
@@ -238,7 +268,7 @@ module SnfModule
     do i = 1, this%neq
       this%x(i) = DZERO
       this%rhs(i) = DZERO
-      this%ibound(i) = 0
+      this%ibound(i) = 1
     end do
     !
     ! -- return
@@ -262,7 +292,7 @@ module SnfModule
     end do
     !
     ! -- Store information needed for observations
-    !call this%obs%obs_df(this%iout, this%name, 'GWF', this%dis)
+    !call this%obs%obs_df(this%iout, this%name, 'SNF', this%dis)
     !
     ! -- return
     return
@@ -279,11 +309,12 @@ module SnfModule
     class(BndType), pointer :: packobj
     !
     ! -- Allocate and read modules attached to model
-    ! if (this%inobs > 0) call this%obs%gwf_obs_ar(this%ic, this%x, this%flowja)
+    ! if (this%inobs > 0) call this%obs%snf_obs_ar(this%ic, this%x, this%flowja)
     !
     ! -- Call dis_ar to write binary grid file
     allocate(itemp(this%dis%nodes))
     call this%dis%dis_ar(itemp)
+    call this%mmr%mmr_ar()
     deallocate(itemp)
     !
     ! -- set up output control
@@ -303,41 +334,128 @@ module SnfModule
     return
   end subroutine snf_ar
 
+  !> @brief Stream Network Flow Model Read and Prepare
+  !!
+  !! (1) calls package read and prepare routines
+  !!
+  !<
+  subroutine snf_rp(this)
+    ! -- modules
+    use TdisModule, only: readnewdata
+    ! -- dummy
+    class(SnfModelType) :: this
+    ! -- local
+    class(BndType), pointer :: packobj
+    integer(I4B) :: ip
+    !
+    ! -- Check with TDIS on whether or not it is time to RP
+    if (.not. readnewdata) return
+    !
+    ! -- Read and prepare
+    !if (this%inmmr > 0) call this%mmr%mmr_rp()
+    !if (this%inoc > 0) call this%oc%oc_rp()
+    !if (this%insto > 0) call this%sto%sto_rp()
+    !if (this%inmvr > 0) call this%mvr%mvr_rp()
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_rp()
+      !call packobj%bnd_rp_obs()
+    end do
+    !
+    ! -- Return
+    return
+  end subroutine snf_rp
+
+  !> @brief Stream Network Flow Model Time Step Advance
+  !!
+  !! (1) calls package advance subroutines
+  !!
+  !<
+  subroutine snf_ad(this)
+    ! -- modules
+    use SimVariablesModule, only: isimcheck, iFailedStepRetry
+    ! -- dummy
+    class(SnfModelType) :: this
+    class(BndType), pointer :: packobj
+    ! -- local
+    integer(I4B) :: irestore
+    integer(I4B) :: ip, n
+    !
+    ! -- Reset state variable
+    irestore = 0
+    if (iFailedStepRetry > 0) irestore = 1
+    if (irestore == 0) then
+      !
+      ! -- copy x into xold
+      do n = 1, this%dis%nodes
+        this%xold(n) = this%x(n)
+      end do
+    else
+      !
+      ! -- copy xold into x if this time step is a redo
+      do n = 1, this%dis%nodes
+        this%x(n) = this%xold(n)
+      end do
+    end if
+    !
+    ! -- Advance
+    !if (this%inmmr > 0) call this%mmr%mmr_ad(this%dis%nodes, this%xold, &
+    !                                         this%x, irestore)
+    !if (this%insto > 0) call this%sto%sto_ad()
+    !if (this%inmvr > 0) call this%mvr%mvr_ad()
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_ad()
+      if (isimcheck > 0) then
+        call packobj%bnd_ck()
+      end if
+    end do
+    !
+    ! -- Push simulated values to preceding time/subtime step
+    !call this%obs%obs_ad()
+    !
+    ! -- return
+    return
+  end subroutine snf_ad
+
   !> @brief Make explicit solve for this time step
   subroutine snf_solve(this)
     ! -- modules
     ! -- dummy
     class(SnfModelType) :: this
     ! -- local
-    !integer(I4B) :: ip
-    !class(BndType), pointer :: packobj
+    integer(I4B) :: n
+    integer(I4B) :: i
+    integer(I4B) :: ip
+    class(BndType), pointer :: packobj
+
+    print *, "Solving Stream Network Model"
+
+    !
+    ! -- Initialize rhs accumulator
+    do n = 1, this%dis%nodes
+      this%rhs(n) = DZERO
+    end do
     !
     ! -- Call boundary packages to set up inflows
-    ! call this%flw%cf()
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_cf()
 
-    ! -- Internal flow packages deallocate
-    ! call this%spf%solve()
-    !
-    ! call calc_muskingum_mann( &
-    !   nseg, &  ! in int32
-    !   segment_order, &  ! in int64 size(nseg)
-    !   to_segment, &  ! in int64 size(nseg)
-    !   seg_lateral_inflow, &  ! in float64 size(nseg)
-    !   seg_inflow0_in, &  ! in float64 size(nseg)
-    !   outflow_ts_in, &  ! in float64 size(nseg)
-    !   tsi, &  ! in int64 size(nseg)
-    !   ts, &  ! in float64 size(nseg)
-    !   c0, &  ! in float64 size(nseg)
-    !   c1, &  ! in float64 size(nseg)
-    !   c2, &  ! in float64 size(nseg)
-    !   seg_upstream_inflow, &  ! out float64 size(nseg)
-    !   seg_inflow0, &  ! out float64 size(nseg)
-    !   seg_inflow, &  ! out float64 size(nseg)
-    !   seg_outflow, &  ! out float64 size(nseg)
-    !   inflow_ts, &  ! out float64 size(nseg)
-    !   outflow_ts, &  ! out float64 size(nseg)
-    !   seg_current_sum &  ! out float64 size(nseg)
-    ! )
+      ! accumulate individual package rhs into this%rhs
+      ! todo: will need to rethink if/how we use packobj
+      !       rhs to store/add flows
+      do i = 1, packobj%nbound
+        n = packobj%nodelist(i)
+        if (this%ibound(n) > 0) then
+          this%rhs(n) = this%rhs(n) + packobj%rhs(i)
+        end if
+      end do
+
+    end do
+
+    ! -- MMR Solve
+    call this%mmr%mmr_solve(this%rhs)
 
     ! -- return
     return
@@ -456,14 +574,14 @@ module SnfModule
       call store_error(errmsg)
     end if
     !
-    ! -- Check to make sure that some GWF packages are not specified more
+    ! -- Check to make sure that some SNF packages are not specified more
     !    than once
     do i = 1, size(nodupftype)
       call namefile_obj%get_unitnumber(trim(nodupftype(i)), iu, 0)
       if (iu > 0) then
         write (errmsg, '(1x, a, a, a)') &
           'Duplicate entries for FTYPE ', trim(nodupftype(i)), &
-          ' not allowed for GWF Model.'
+          ' not allowed for SNF Model.'
         call store_error(errmsg)
       end if
     end do

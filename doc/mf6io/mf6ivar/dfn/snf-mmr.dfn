@@ -12,6 +12,18 @@ mf6internal ipakcb
 # --------------------- snf mmr griddata ---------------------
 
 block griddata
+name iseg_order
+type integer
+shape (nodes)
+valid
+reader readarray
+layered false
+optional
+longname segment calculation order
+description segment calculation order
+numeric_index true
+
+block griddata
 name mann_n
 type double precision
 shape (nodes)

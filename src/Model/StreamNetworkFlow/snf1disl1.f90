@@ -14,6 +14,7 @@ module SnfDislModule
 
   private
   public :: disl_cr
+  public :: SnfDislType
 
   type, extends(DisBaseType) :: SnfDislType  
     integer(I4B), pointer :: nvert => null()                                     !< number of x,y vertices

@@ -56,10 +56,14 @@ def test_disl_simple(function_tmpdir, targets):
         [2, 0.5, 2, 2, 3],
         [3, 0.5, 2, 3, 4],
     ]
+
+    nodes = len(cell2d)
+    nvert = len(vertices)
+
     disl = flopy.mf6.ModflowSnfdisl(
         snf, 
-        nodes=len(cell2d), 
-        nvert=len(vertices),
+        nodes=nodes, 
+        nvert=nvert,
         segment_length=1.0,
         tosegment=[2, 2, 3, -1],   # -1 gives 0 in one-based, which means outflow cell
         idomain=1, 
@@ -69,6 +73,7 @@ def test_disl_simple(function_tmpdir, targets):
     
     mmr = flopy.mf6.ModflowSnfmmr(
         snf, 
+        iseg_order=list(range(nodes)),
         mann_n=0.3, 
         seg_depth=100., 
         seg_slope=0.01, 

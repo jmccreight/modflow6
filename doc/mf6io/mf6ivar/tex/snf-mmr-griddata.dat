@@ -1,4 +1,6 @@
 BEGIN GRIDDATA
+  ISEG_ORDER
+    <iseg_order(nodes)> -- READARRAY
   MANN_N
     <mann_n(nodes)> -- READARRAY
   SEG_DEPTH

@@ -9,6 +9,7 @@ module SnfMmrInputModule
 
   type SnfMmrParamFoundType
     logical :: ipakcb = .false.
+    logical :: iseg_order = .false.
     logical :: mann_n = .false.
     logical :: seg_depth = .false.
     logical :: seg_slope = .false.
@@ -26,6 +27,22 @@ module SnfMmrInputModule
     'KEYWORD', & ! type
     '', & ! shape
     .false., & ! required
+    .false., & ! multi-record
+    .false., & ! preserve case
+    .false. & ! layered
+    )
+
+  type(InputParamDefinitionType), parameter :: &
+    snfmmr_iseg_order = InputParamDefinitionType &
+    ( &
+    'SNF', & ! component
+    'MMR', & ! subcomponent
+    'GRIDDATA', & ! block
+    'ISEG_ORDER', & ! tag name
+    'ISEG_ORDER', & ! fortran variable
+    'INTEGER1D', & ! type
+    'NODES', & ! shape
+    .true., & ! required
     .false., & ! multi-record
     .false., & ! preserve case
     .false. & ! layered
@@ -99,6 +116,7 @@ module SnfMmrInputModule
     snf_mmr_param_definitions(*) = &
     [ &
     snfmmr_ipakcb, &
+    snfmmr_iseg_order, &
     snfmmr_mann_n, &
     snfmmr_seg_depth, &
     snfmmr_seg_slope, &

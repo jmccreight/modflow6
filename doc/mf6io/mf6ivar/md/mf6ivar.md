@@ -1179,6 +1179,7 @@
 | SNF | DISL | CELL2D | NCVERT | INTEGER | is the number of vertices required to define the cell.  There may be a different number of vertices for each cell. |
 | SNF | DISL | CELL2D | ICVERT | INTEGER (NCVERT) | is an array of integer values containing vertex numbers (in the VERTICES block) used to define the cell.  Vertices must be listed in the order that defines the line representing the cell.  Cells that are connected must share vertices. The bottom elevation of the cell is calculated using the ZV of the first and last vertex point and FDC. |
 | SNF | MMR | OPTIONS | SAVE_FLOWS | KEYWORD | keyword to indicate that budget flow terms will be written to the file specified with ``BUDGET SAVE FILE'' in Output Control. |
+| SNF | MMR | GRIDDATA | ISEG_ORDER | INTEGER (NODES) | segment calculation order |
 | SNF | MMR | GRIDDATA | MANN_N | DOUBLE PRECISION (NODES) | manning roughness coefficient |
 | SNF | MMR | GRIDDATA | SEG_DEPTH | DOUBLE PRECISION (NODES) | Depth of bankfull water in segment |
 | SNF | MMR | GRIDDATA | SEG_SLOPE | DOUBLE PRECISION (NODES) | surface slope of each segment |
