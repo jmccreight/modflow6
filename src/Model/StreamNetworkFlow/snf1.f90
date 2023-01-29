@@ -8,23 +8,23 @@
 !!   DONE -- Implement Explicit Model Solution (EMS6) for handle explicit models
 !!   DONE -- Implement DISL Package
 !!   ONGOING -- Implement MMR Package
+!!   DONE -- Use MMR package to solve a flow problem in combination with DISL and FLW
 !!   DONE -- Implement FLW Package to handle lateral and point inflows
+!!   DONE -- Transfer results into the flowja vector
+!!   DONE -- Implement strategy for storing outflow terms and getting them into budget
 !!   Implement SNF and FLW advance routines to handle transient problems
-!!   Use MMR package to solve a flow problem in combination with DISL and FLW
+!!   Implement output control
 !!   Flopy support for DISL and DISL binary grid file
-!!   Need strategy for storing outflow terms and getting them into budget
-!!   Need strategy for calculating and storing storage terms and getting them into budget
-!!   Transfer results into the flowja vector
+!!   Implement storage terms and getting them into budget
 !!   Observations
 !!   mf6io guide
 !!   Initial conditions?
-!!   Implement budget object
-!!   Implement output control
 !!   Deal with the timestep and subtiming issues
 !!   Rework the Iterative Model Solution (IMS6) to handle both implicit and explicit models
 !!   Mover support?
 !!   SNF-SNF Exchange
 !!   SNF-SNF Exchange in parallel
+!!   Use dag_module to calculate iseg_order (if iseg_order not specified by user)
 !! 
 !<
 module SnfModule
@@ -57,8 +57,12 @@ module SnfModule
     procedure :: model_ar => snf_ar
     procedure :: model_rp => snf_rp
     procedure :: model_ad => snf_ad
-    procedure :: model_da => snf_da
     procedure :: model_solve => snf_solve !< routine for solving this model for the current time step
+    procedure :: model_cq => snf_cq
+    procedure :: model_bd => snf_bd
+    procedure :: model_ot => snf_ot
+    procedure :: model_da => snf_da
+    procedure :: snf_ot_bdsummary
     procedure :: package_create
     procedure :: ftype_check
     procedure :: load_input_context => snf_load_input_context
@@ -183,7 +187,7 @@ module SnfModule
     end if
     !
     ! -- Create utility objects
-    !call budget_cr(this%budget, this%name)
+    call budget_cr(this%budget, this%name)
     !
     ! -- Muskingum Manning Routing Package
     if (this%inmmr > 0) then
@@ -284,6 +288,9 @@ module SnfModule
     ! -- local
     integer(I4B) :: ip
     class(BndType), pointer :: packobj
+    !
+    !
+    call this%budget%budget_df(niunit, 'VOLUME', 'L**3')
     !
     ! -- Define packages and assign iout for time series managers
     do ip = 1, this%bndlist%Count()
@@ -428,9 +435,6 @@ module SnfModule
     integer(I4B) :: i
     integer(I4B) :: ip
     class(BndType), pointer :: packobj
-
-    print *, "Solving Stream Network Model"
-
     !
     ! -- Initialize rhs accumulator
     do n = 1, this%dis%nodes
@@ -461,6 +465,168 @@ module SnfModule
     return
   end subroutine snf_solve
 
+  !> @brief Calculate flow
+  !<
+  subroutine snf_cq(this, icnvg, isuppress_output)
+    ! -- modules
+    ! -- dummy
+    class(SnfModelType) :: this
+    integer(I4B), intent(in) :: icnvg
+    integer(I4B), intent(in) :: isuppress_output
+    ! -- local
+    integer(I4B) :: i
+    integer(I4B) :: ip
+    class(BndType), pointer :: packobj
+    !
+    ! -- Construct the flowja array.  Flowja is calculated each time, even if
+    !    output is suppressed.  (flowja is positive into a cell.)  The diagonal
+    !    position of the flowja array will contain the flow residual after
+    !    these routines are called, so each package is responsible for adding
+    !    its flow to this diagonal position.
+    do i = 1, this%nja
+      this%flowja(i) = DZERO
+    end do
+    if (this%inmmr > 0) call this%mmr%mmr_cq(this%flowja)
+    !
+    ! -- Go through packages and call cq routines.  cf() routines are called
+    !    first to regenerate non-linear terms to be consistent with the final
+    !    head solution.
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_cf(reset_mover=.false.)
+      call packobj%bnd_cq(this%x, this%flowja)
+    end do
+    !
+    ! -- Return
+    return
+  end subroutine snf_cq
+
+  !> @brief Model Budget
+  !<
+  subroutine snf_bd(this, icnvg, isuppress_output)
+    ! -- modules
+    use SparseModule, only: csr_diagsum
+    ! -- dummy
+    class(SnfModelType) :: this
+    integer(I4B), intent(in) :: icnvg
+    integer(I4B), intent(in) :: isuppress_output
+    ! -- local
+    integer(I4B) :: ip
+    class(BndType), pointer :: packobj
+    !
+    ! -- Finalize calculation of flowja by adding face flows to the diagonal.
+    !    This results in the flow residual being stored in the diagonal
+    !    position for each cell.
+    call csr_diagsum(this%dis%con%ia, this%flowja)
+    !
+    ! -- Save the solution convergence flag
+    this%icnvg = icnvg
+    !
+    ! -- Budget routines (start by resetting).  Sole purpose of this section
+    !    is to add in and outs to model budget.  All ins and out for a model
+    !    should be added here to this%budget.  In a subsequent exchange call,
+    !    exchange flows might also be added.
+    call this%budget%reset()
+    if (this%inmmr > 0) call this%mmr%mmr_bd(isuppress_output, this%budget)
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_bd(this%budget)
+    end do
+    !
+    ! -- Return
+    return
+  end subroutine snf_bd
+
+  !> @brief GroundWater Flow Model Output
+  subroutine snf_ot(this)
+    ! -- modules
+    use TdisModule, only: kstp, kper, tdis_ot, endofperiod
+    ! -- dummy
+    class(SnfModelType) :: this
+    ! -- local
+    integer(I4B) :: idvsave
+    integer(I4B) :: idvprint
+    integer(I4B) :: icbcfl
+    integer(I4B) :: icbcun
+    integer(I4B) :: ibudfl
+    integer(I4B) :: ipflag
+    ! -- formats
+    character(len=*), parameter :: fmtnocnvg = &
+      "(1X,/9X,'****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP ', &
+      &I0,' OF STRESS PERIOD ',I0,'****')"
+    !
+    ! -- Set write and print flags
+    idvsave = 0
+    idvprint = 0
+    icbcfl = 0
+    ibudfl = 1 !cdl force to 1 -- should be zero when OC implemented
+    ! if (this%oc%oc_save('HEAD')) idvsave = 1
+    ! if (this%oc%oc_print('HEAD')) idvprint = 1
+    ! if (this%oc%oc_save('BUDGET')) icbcfl = 1
+    ! if (this%oc%oc_print('BUDGET')) ibudfl = 1
+    ! icbcun = this%oc%oc_save_unit('BUDGET')
+    !
+    ! -- Override ibudfl and idvprint flags for nonconvergence
+    !    and end of period
+    ! ibudfl = this%oc%set_print_flag('BUDGET', this%icnvg, endofperiod)
+    ! idvprint = this%oc%set_print_flag('HEAD', this%icnvg, endofperiod)
+    !
+    !   Calculate and save observations
+    ! call this%gwf_ot_obs()
+    ! !
+    ! !   Save and print flows
+    ! call this%gwf_ot_flow(icbcfl, ibudfl, icbcun)
+    ! !
+    ! !   Save and print dependent variables
+    ! call this%gwf_ot_dv(idvsave, idvprint, ipflag)
+    !
+    !   Print budget summaries
+    call this%snf_ot_bdsummary(ibudfl, ipflag)
+    !
+    ! -- Timing Output; if any dependendent variables or budgets
+    !    are printed, then ipflag is set to 1.
+    if (ipflag == 1) call tdis_ot(this%iout)
+    !
+    ! -- Write non-convergence message
+    if (this%icnvg == 0) then
+      write (this%iout, fmtnocnvg) kstp, kper
+    end if
+    !
+    ! -- Return
+    return
+  end subroutine snf_ot
+
+  subroutine snf_ot_bdsummary(this, ibudfl, ipflag)
+    use TdisModule, only: kstp, kper, totim
+    class(SnfModelType) :: this
+    integer(I4B), intent(in) :: ibudfl
+    integer(I4B), intent(inout) :: ipflag
+    class(BndType), pointer :: packobj
+    integer(I4B) :: ip
+
+    !
+    ! -- Package budget summary
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_ot_bdsummary(kstp, kper, this%iout, ibudfl)
+    end do
+
+    ! ! -- mover budget summary
+    ! if (this%inmvr > 0) then
+    !   call this%mvr%mvr_ot_bdsummary(ibudfl)
+    ! end if
+
+    ! -- model budget summary
+    if (ibudfl /= 0) then
+      ipflag = 1
+      call this%budget%budget_ot(kstp, kper, this%iout)
+    end if
+
+    ! -- Write to budget csv every time step
+    call this%budget%writecsv(totim)
+
+  end subroutine snf_ot_bdsummary
+
   !> @brief Deallocate
   subroutine snf_da(this)
     ! -- modules
@@ -474,9 +640,11 @@ module SnfModule
     ! -- Internal flow packages deallocate
     call this%dis%dis_da()
     call this%mmr%mmr_da()
+    call this%budget%budget_da()
     !
     ! -- Internal package objects
     deallocate (this%dis)
+    deallocate (this%budget)
     !
     ! -- Boundary packages
     do ip = 1, this%bndlist%Count()

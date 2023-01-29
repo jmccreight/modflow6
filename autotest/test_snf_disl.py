@@ -64,7 +64,7 @@ def test_disl_simple(function_tmpdir, targets):
         snf, 
         nodes=nodes, 
         nvert=nvert,
-        segment_length=1.0,
+        segment_length=1000.0,
         tosegment=[2, 2, 3, -1],   # -1 gives 0 in one-based, which means outflow cell
         idomain=1, 
         vertices=vertices, 
@@ -74,13 +74,13 @@ def test_disl_simple(function_tmpdir, targets):
     mmr = flopy.mf6.ModflowSnfmmr(
         snf, 
         iseg_order=list(range(nodes)),
-        mann_n=0.3, 
+        mann_n=0.04, 
         seg_depth=100., 
-        seg_slope=0.01, 
-        x_coef=1.
+        seg_slope=0.0001, 
+        x_coef=0.2
     )
 
-    flw_spd = {0: [[0, 1.0]]}
+    flw_spd = {0: [[0, 1000.0], [1, 500.]]}
     flw = flopy.mf6.ModflowSnfflw(
         snf,
         print_input=True,

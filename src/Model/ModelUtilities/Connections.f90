@@ -1035,6 +1035,10 @@ contains
     call sparse%sort()
     call sparse%filliaja(this%ia, this%ja, ierror)
     call sparse%destroy()
+    !
+    ! -- fill the isym and jas arrays
+    call fillisym(this%nodes, this%nja, this%ia, this%ja, this%isym)
+    call filljas(this%nodes, this%nja, this%ia, this%ja, this%isym, this%jas)
 
     return
   end subroutine dislconnections

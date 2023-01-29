@@ -48,6 +48,10 @@ module SnfMmrModule
     real(DP), dimension(:), pointer, contiguous :: outflow_ts => null() !< outflow timeseries variable (internal calculations)
     real(DP), dimension(:), pointer, contiguous :: seg_current_sum => null() !< summation variable
 
+    ! -- budget vectors
+    real(DP), dimension(:), pointer, contiguous :: extoutflow => null() !< flows leaving model (for tosegment = 0)
+    real(DP), dimension(:), pointer, contiguous :: qsto => null() !< storage rates
+
     ! -- pointer to concrete disl subclass of DisBaseType
     type(SnfDislType), pointer :: disl
 
@@ -61,6 +65,8 @@ module SnfMmrModule
     procedure :: mmr_ar
     procedure :: mmr_init_data
     procedure :: mmr_solve
+    procedure :: mmr_cq
+    procedure :: mmr_bd
     procedure :: mmr_da
   end type SnfMmrType
 
@@ -154,6 +160,9 @@ module SnfMmrModule
     call mem_allocate(this%outflow_ts, this%dis%nodes, 'OUTFLOW_TS', this%memoryPath)
     call mem_allocate(this%seg_current_sum, this%dis%nodes, 'SEG_CURRENT_SUM', this%memoryPath)
 
+    call mem_allocate(this%extoutflow, this%dis%nodes, 'EXTOUTFLOW', this%memoryPath)
+    call mem_allocate(this%qsto, this%dis%nodes, 'QSTO', this%memoryPath)
+
     do n = 1, this%dis%nodes
 
       this%iseg_order(n) = 0
@@ -179,6 +188,9 @@ module SnfMmrModule
       this%inflow_ts(n) = DZERO
       this%outflow_ts(n) = DZERO
       this%seg_current_sum(n) = DZERO
+
+      this%extoutflow(n) = DZERO
+      this%qsto(n) = DZERO
 
     end do
 
@@ -407,6 +419,76 @@ module SnfMmrModule
     return
   end subroutine mmr_solve
 
+  subroutine mmr_cq(this, flowja)
+    ! -- dummy
+    class(SnfMmrType) :: this
+    real(DP), intent(inout), dimension(:) :: flowja
+    ! -- local
+    integer(I4B) :: n, ipos, m
+    real(DP) :: qnm
+    !
+    ! -- Transfer seg_outflow into flowja
+    do n = 1, this%dis%nodes
+      do ipos = this%dis%con%ia(n) + 1, this%dis%con%ia(n + 1) - 1
+        m = this%dis%con%ja(ipos)
+        if (m < n) cycle
+        qnm = this%seg_outflow(n)
+        flowja(ipos) = -qnm
+        flowja(this%dis%con%isym(ipos)) = qnm
+      end do
+    end do
+
+    ! Transfer any flows leaving tosegment 0 into extoutflow
+    do n = 1, this%dis%nodes
+      if (this%disl%tosegment(n) == 0) then
+        this%extoutflow(n) = -this%seg_outflow(n)
+      else
+        this%extoutflow(n) = DZERO
+      end if
+    end do
+
+    ! Transfer storage terms into qsto
+    do n = 1, this%dis%nodes
+      this%qsto(n) = this%seg_outflow(n) - this%seg_inflow(n)
+    end do
+
+    !
+    ! -- Return
+    return
+  end subroutine mmr_cq
+
+  !> @ brief Model budget calculation for package
+  !!
+  !!  Budget calculation for the MMR package components. Components include
+  !!  external outflow
+  !!
+  !<
+  subroutine mmr_bd(this, isuppress_output, model_budget)
+    ! -- modules
+    use TdisModule, only: delt
+    use BudgetModule, only: BudgetType, rate_accumulator
+    ! -- dummy variables
+    class(SnfMmrType) :: this !< SnfMmrType object
+    integer(I4B), intent(in) :: isuppress_output !< flag to suppress model output
+    type(BudgetType), intent(inout) :: model_budget !< model budget object
+    ! -- local variables
+    real(DP) :: rin
+    real(DP) :: rout
+    !
+    ! -- Add external outflow rates to model budget
+    call rate_accumulator(this%extoutflow, rin, rout)
+    call model_budget%addentry(rin, rout, delt, '             MMR', &
+                               isuppress_output, '     EXT-OUTFLOW')
+    !
+    ! -- Add storage rates to model budget
+    call rate_accumulator(this%qsto, rin, rout)
+    call model_budget%addentry(rin, rout, delt, '             MMR', &
+                               isuppress_output, '         STORAGE')
+    !
+    ! -- return
+    return
+  end subroutine mmr_bd
+
   !> @brief deallocate memory
   !<
   subroutine mmr_da(this)
@@ -448,6 +530,9 @@ module SnfMmrModule
     call mem_deallocate(this%inflow_ts)
     call mem_deallocate(this%outflow_ts)
     call mem_deallocate(this%seg_current_sum)
+
+    call mem_deallocate(this%extoutflow)
+    call mem_deallocate(this%qsto)
 
     ! -- deallocate parent
     call this%NumericalPackageType%da()
@@ -743,7 +828,7 @@ module SnfMmrModule
           
           ! add current time step flow rate to the upstream flow rate
           ! for the segment this segment is connected to
-          to_seg = to_segment(jseg) + 1 ! convert from zero based in python
+          to_seg = to_segment(jseg) ! cdl + 1 ! convert from zero based in python
           if (to_seg >= 1) then
               seg_upstream_inflow(to_seg) = &
                   seg_upstream_inflow(to_seg) + outflow_ts(jseg)
