@@ -67,6 +67,8 @@ module SnfMmrModule
     procedure :: mmr_solve
     procedure :: mmr_cq
     procedure :: mmr_bd
+    procedure :: mmr_save_model_flows
+    procedure :: mmr_print_model_flows
     procedure :: mmr_da
   end type SnfMmrType
 
@@ -231,6 +233,7 @@ module SnfMmrModule
     idmMemoryPath = create_mem_path(this%name_model, 'MMR', idm_context)
     !
     ! -- update defaults with idm sourced values
+    call mem_set_value(this%iprflow, 'IPRFLOW', idmMemoryPath, found%iprflow)
     call mem_set_value(this%ipakcb, 'IPAKCB', idmMemoryPath, found%ipakcb)
     !
     ! -- log values to list file
@@ -250,6 +253,11 @@ module SnfMmrModule
     type(SnfMmrParamFoundType), intent(in) :: found
 
     write (this%iout, '(1x,a)') 'Setting MMR Options'
+
+    if (found%iprflow) then
+      write (this%iout, '(4x,a)') 'Cell-by-cell flow information will be printed &
+                                  &to listing file whenever ICBCFL is not zero.'
+    end if
 
     if (found%ipakcb) then
       write (this%iout, '(4x,a)') 'Cell-by-cell flow information will be printed &
@@ -489,6 +497,80 @@ module SnfMmrModule
     return
   end subroutine mmr_bd
 
+  !> @ brief save flows for package
+  !<
+  subroutine mmr_save_model_flows(this, flowja, icbcfl, icbcun)
+    ! -- dummy
+    class(SnfMmrType) :: this
+    real(DP), dimension(:), intent(in) :: flowja
+    integer(I4B), intent(in) :: icbcfl
+    integer(I4B), intent(in) :: icbcun
+    ! -- local
+    integer(I4B) :: ibinun
+    ! -- formats
+    !
+    ! -- Set unit number for binary output
+    if (this%ipakcb < 0) then
+      ibinun = icbcun
+    elseif (this%ipakcb == 0) then
+      ibinun = 0
+    else
+      ibinun = this%ipakcb
+    end if
+    if (icbcfl == 0) ibinun = 0
+    !
+    ! -- Write the face flows if requested
+    if (ibinun /= 0) then
+      call this%dis%record_connection_array(flowja, ibinun, this%iout)
+    end if
+    !
+    ! -- Return
+    return
+  end subroutine mmr_save_model_flows
+
+  !> @ brief print flows for package
+  !<
+  subroutine mmr_print_model_flows(this, ibudfl, flowja)
+    ! -- modules
+    use TdisModule, only: kper, kstp
+    use ConstantsModule, only: LENBIGLINE
+    ! -- dummy
+    class(SnfMmrType) :: this
+    integer(I4B), intent(in) :: ibudfl
+    real(DP), intent(inout), dimension(:) :: flowja
+    ! -- local
+    character(len=LENBIGLINE) :: line
+    character(len=30) :: tempstr
+    integer(I4B) :: n, ipos, m
+    real(DP) :: qnm
+    ! -- formats
+    character(len=*), parameter :: fmtiprflow = &
+      &"(/,4x,'CALCULATED INTERCELL FLOW FOR PERIOD ', i0, ' STEP ', i0)"
+! ------------------------------------------------------------------------------
+    !
+    ! -- Write flowja to list file if requested
+    if (ibudfl /= 0 .and. this%iprflow > 0) then
+      write (this%iout, fmtiprflow) kper, kstp
+      do n = 1, this%dis%nodes
+        line = ''
+        call this%dis%noder_to_string(n, tempstr)
+        line = trim(tempstr)//':'
+        do ipos = this%dis%con%ia(n) + 1, this%dis%con%ia(n + 1) - 1
+          m = this%dis%con%ja(ipos)
+          call this%dis%noder_to_string(m, tempstr)
+          line = trim(line)//' '//trim(tempstr)
+          qnm = flowja(ipos)
+          write (tempstr, '(1pg15.6)') qnm
+          line = trim(line)//' '//trim(adjustl(tempstr))
+        end do
+        write (this%iout, '(a)') trim(line)
+      end do
+    end if
+    !
+    ! -- Return
+    return
+  end subroutine mmr_print_model_flows
+
   !> @brief deallocate memory
   !<
   subroutine mmr_da(this)
@@ -579,6 +661,8 @@ module SnfMmrModule
     ! )
     tfact = 60.d0 * 60.d0
     do n = 1, this%dis%nodes
+      !
+      ! calculate velocity in meters per hour
       v = velocity_func( &
         this%mann_n(n), &
         this%seg_slope(n), &

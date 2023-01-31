@@ -9,6 +9,7 @@ module SnfMmrInputModule
 
   type SnfMmrParamFoundType
     logical :: ipakcb = .false.
+    logical :: iprflow = .false.
     logical :: iseg_order = .false.
     logical :: mann_n = .false.
     logical :: seg_depth = .false.
@@ -24,6 +25,22 @@ module SnfMmrInputModule
     'OPTIONS', & ! block
     'SAVE_FLOWS', & ! tag name
     'IPAKCB', & ! fortran variable
+    'KEYWORD', & ! type
+    '', & ! shape
+    .false., & ! required
+    .false., & ! multi-record
+    .false., & ! preserve case
+    .false. & ! layered
+    )
+
+  type(InputParamDefinitionType), parameter :: &
+    snfmmr_iprflow = InputParamDefinitionType &
+    ( &
+    'SNF', & ! component
+    'MMR', & ! subcomponent
+    'OPTIONS', & ! block
+    'PRINT_FLOWS', & ! tag name
+    'IPRFLOW', & ! fortran variable
     'KEYWORD', & ! type
     '', & ! shape
     .false., & ! required
@@ -116,6 +133,7 @@ module SnfMmrInputModule
     snf_mmr_param_definitions(*) = &
     [ &
     snfmmr_ipakcb, &
+    snfmmr_iprflow, &
     snfmmr_iseg_order, &
     snfmmr_mann_n, &
     snfmmr_seg_depth, &

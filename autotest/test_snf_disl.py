@@ -94,11 +94,11 @@ def test_disl_simple(function_tmpdir, targets):
 END options
 
 BEGIN timing
-  TDIS6  snf-disl01.tdis
+  TDIS6  {name}.tdis
 END timing
 
 BEGIN models
-  snf6  snf-disl01.nam  snf-disl01
+  snf6  {name}.nam  {name}
 END models
 
 BEGIN exchanges

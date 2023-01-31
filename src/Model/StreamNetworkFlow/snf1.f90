@@ -62,6 +62,7 @@ module SnfModule
     procedure :: model_bd => snf_bd
     procedure :: model_ot => snf_ot
     procedure :: model_da => snf_da
+    procedure :: snf_ot_flow
     procedure :: snf_ot_bdsummary
     procedure :: package_create
     procedure :: ftype_check
@@ -574,8 +575,8 @@ module SnfModule
     !   Calculate and save observations
     ! call this%gwf_ot_obs()
     ! !
-    ! !   Save and print flows
-    ! call this%gwf_ot_flow(icbcfl, ibudfl, icbcun)
+    !   Save and print flows
+    call this%snf_ot_flow(icbcfl, ibudfl, icbcun)
     ! !
     ! !   Save and print dependent variables
     ! call this%gwf_ot_dv(idvsave, idvprint, ipflag)
@@ -595,6 +596,50 @@ module SnfModule
     ! -- Return
     return
   end subroutine snf_ot
+
+  subroutine snf_ot_flow(this, icbcfl, ibudfl, icbcun)
+    class(SnfModelType) :: this
+    integer(I4B), intent(in) :: icbcfl
+    integer(I4B), intent(in) :: ibudfl
+    integer(I4B), intent(in) :: icbcun
+    class(BndType), pointer :: packobj
+    integer(I4B) :: ip
+
+    ! -- Save GWF flows
+    if (this%inmmr > 0) then
+      call this%mmr%mmr_save_model_flows(this%flowja, icbcfl, icbcun)
+    end if
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_ot_model_flows(icbcfl=icbcfl, ibudfl=0, icbcun=icbcun)
+    end do
+
+    ! -- Save advanced package flows
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_ot_package_flows(icbcfl=icbcfl, ibudfl=0)
+    end do
+    ! if (this%inmvr > 0) then
+    !   call this%mvr%mvr_ot_saveflow(icbcfl, ibudfl)
+    ! end if
+
+    ! -- Print GWF flows
+    if (this%inmmr > 0) call this%mmr%mmr_print_model_flows(ibudfl, this%flowja)
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_ot_model_flows(icbcfl=icbcfl, ibudfl=ibudfl, icbcun=0)
+    end do
+
+    ! -- Print advanced package flows
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_ot_package_flows(icbcfl=0, ibudfl=ibudfl)
+    end do
+    ! if (this%inmvr > 0) then
+    !   call this%mvr%mvr_ot_printflow(icbcfl, ibudfl)
+    ! end if
+
+  end subroutine snf_ot_flow
 
   subroutine snf_ot_bdsummary(this, ibudfl, ipflag)
     use TdisModule, only: kstp, kper, totim
