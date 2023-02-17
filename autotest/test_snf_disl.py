@@ -76,6 +76,7 @@ def test_disl_simple(function_tmpdir, targets):
         snf, 
         print_flows=True,
         iseg_order=list(range(nodes)),
+        qoutflow0=0.,
         mann_n=0.04, 
         seg_depth=100., 
         seg_slope=0.0001, 

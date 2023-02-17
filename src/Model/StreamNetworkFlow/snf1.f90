@@ -407,8 +407,7 @@ module SnfModule
     end if
     !
     ! -- Advance
-    !if (this%inmmr > 0) call this%mmr%mmr_ad(this%dis%nodes, this%xold, &
-    !                                         this%x, irestore)
+    if (this%inmmr > 0) call this%mmr%mmr_ad(irestore)
     !if (this%insto > 0) call this%sto%sto_ad()
     !if (this%inmvr > 0) call this%mvr%mvr_ad()
     do ip = 1, this%bndlist%Count()
@@ -605,7 +604,7 @@ module SnfModule
     class(BndType), pointer :: packobj
     integer(I4B) :: ip
 
-    ! -- Save GWF flows
+    ! -- Save SNF flows
     if (this%inmmr > 0) then
       call this%mmr%mmr_save_model_flows(this%flowja, icbcfl, icbcun)
     end if
@@ -623,7 +622,7 @@ module SnfModule
     !   call this%mvr%mvr_ot_saveflow(icbcfl, ibudfl)
     ! end if
 
-    ! -- Print GWF flows
+    ! -- Print SNF flows
     if (this%inmmr > 0) call this%mmr%mmr_print_model_flows(ibudfl, this%flowja)
     do ip = 1, this%bndlist%Count()
       packobj => GetBndFromList(this%bndlist, ip)

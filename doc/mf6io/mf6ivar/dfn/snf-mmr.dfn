@@ -33,6 +33,17 @@ description segment calculation order
 numeric_index true
 
 block griddata
+name qoutflow0
+type double precision
+shape (nodes)
+valid
+reader readarray
+layered false
+optional
+longname initial flows
+description initial outflow from the reach at time zero
+
+block griddata
 name mann_n
 type double precision
 shape (nodes)

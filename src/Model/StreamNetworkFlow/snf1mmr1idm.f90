@@ -11,6 +11,7 @@ module SnfMmrInputModule
     logical :: ipakcb = .false.
     logical :: iprflow = .false.
     logical :: iseg_order = .false.
+    logical :: qoutflow0 = .false.
     logical :: mann_n = .false.
     logical :: seg_depth = .false.
     logical :: seg_slope = .false.
@@ -58,6 +59,22 @@ module SnfMmrInputModule
     'ISEG_ORDER', & ! tag name
     'ISEG_ORDER', & ! fortran variable
     'INTEGER1D', & ! type
+    'NODES', & ! shape
+    .true., & ! required
+    .false., & ! multi-record
+    .false., & ! preserve case
+    .false. & ! layered
+    )
+
+  type(InputParamDefinitionType), parameter :: &
+    snfmmr_qoutflow0 = InputParamDefinitionType &
+    ( &
+    'SNF', & ! component
+    'MMR', & ! subcomponent
+    'GRIDDATA', & ! block
+    'QOUTFLOW0', & ! tag name
+    'QOUTFLOW0', & ! fortran variable
+    'DOUBLE1D', & ! type
     'NODES', & ! shape
     .true., & ! required
     .false., & ! multi-record
@@ -135,6 +152,7 @@ module SnfMmrInputModule
     snfmmr_ipakcb, &
     snfmmr_iprflow, &
     snfmmr_iseg_order, &
+    snfmmr_qoutflow0, &
     snfmmr_mann_n, &
     snfmmr_seg_depth, &
     snfmmr_seg_slope, &

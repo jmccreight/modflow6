@@ -23,6 +23,7 @@ module SnfMmrModule
 
     ! -- user-provided input
     integer(I4B), dimension(:), pointer, contiguous :: iseg_order => null() !< routing calculation order
+    real(DP), dimension(:), pointer, contiguous :: qoutflow0 => null() !< initial outflow for each reach
     real(DP), dimension(:), pointer, contiguous :: mann_n => null() !< manning roughness coefficient
     real(DP), dimension(:), pointer, contiguous :: seg_depth => null() !< depth of bankfull water in segment
     real(DP), dimension(:), pointer, contiguous :: seg_slope => null() !< surface slope of each segment
@@ -63,6 +64,7 @@ module SnfMmrModule
     procedure :: source_griddata
     procedure :: log_griddata
     procedure :: mmr_ar
+    procedure :: mmr_ad
     procedure :: mmr_init_data
     procedure :: mmr_solve
     procedure :: mmr_cq
@@ -137,6 +139,7 @@ module SnfMmrModule
     !
     ! -- user-provided input
     call mem_allocate(this%iseg_order, this%dis%nodes, 'ISEG_ORDER', this%memoryPath)
+    call mem_allocate(this%qoutflow0, this%dis%nodes, 'QOUTFLOW0', this%memoryPath)
     call mem_allocate(this%mann_n, this%dis%nodes, 'MANN_N', this%memoryPath)
     call mem_allocate(this%seg_depth, this%dis%nodes, 'SEG_DEPTH', this%memoryPath)
     call mem_allocate(this%seg_slope, this%dis%nodes, 'SEG_SLOPE', this%memoryPath)
@@ -168,6 +171,7 @@ module SnfMmrModule
     do n = 1, this%dis%nodes
 
       this%iseg_order(n) = 0
+      this%qoutflow0(n) = DZERO
       this%mann_n(n) = DZERO
       this%seg_depth(n) = DZERO
       this%seg_slope(n) = DZERO
@@ -297,6 +301,7 @@ module SnfMmrModule
     !
     ! -- update defaults with idm sourced values
     call mem_set_value(this%iseg_order, 'ISEG_ORDER', idmMemoryPath, map, found%iseg_order)
+    call mem_set_value(this%qoutflow0, 'QOUTFLOW0', idmMemoryPath, map, found%qoutflow0)
     call mem_set_value(this%mann_n, 'MANN_N', idmMemoryPath, map, found%mann_n)
     call mem_set_value(this%seg_depth, 'SEG_DEPTH', idmMemoryPath, map, found%seg_depth)
     call mem_set_value(this%seg_slope, 'SEG_SLOPE', idmMemoryPath, map, found%seg_slope)
@@ -305,6 +310,12 @@ module SnfMmrModule
     ! -- ensure ISEG_ORDER was found
     if (.not. found%iseg_order) then
       write (errmsg, '(a)') 'Error in GRIDDATA block: ISEG_ORDER not found.'
+      call store_error(errmsg)
+    end if
+    !
+    ! -- ensure QOUTFLOW0 was found
+    if (.not. found%qoutflow0) then
+      write (errmsg, '(a)') 'Error in GRIDDATA block: QOUTFLOW0 not found.'
       call store_error(errmsg)
     end if
     !
@@ -354,6 +365,10 @@ module SnfMmrModule
       write (this%iout, '(4x,a)') 'ISEG_ORDER set from input file'
     end if
 
+    if (found%qoutflow0) then
+      write (this%iout, '(4x,a)') 'QOUTFLOW0 set from input file'
+    end if
+
     if (found%mann_n) then
       write (this%iout, '(4x,a)') 'MANN_N set from input file'
     end if
@@ -387,6 +402,27 @@ module SnfMmrModule
     return
   end subroutine mmr_ar
 
+  subroutine mmr_ad(this, irestore)
+    use TdisModule, only: kper, kstp
+    !
+    class(SnfMmrType) :: this
+    integer(I4B), intent(in) :: irestore
+    integer(I4B) :: n
+    !
+    ! todo: need to handle restore if time step failed
+    if (irestore == 0) then
+      do n = 1, this%disl%nodes
+        this%seg_inflow0(n) = this%seg_inflow(n)
+      end do
+    else
+      ! -- todo: reset states back to start of 
+      !          time step
+    end if
+    !
+    ! -- Return
+    return
+  end subroutine mmr_ad
+
   !> @brief solve
   !<
   subroutine mmr_solve(this, rhs)
@@ -396,11 +432,17 @@ module SnfMmrModule
     real(DP), dimension(:), intent(in) :: rhs !< right-hand-side vector of boundary package inflows
     ! -- local
     integer(I4B) :: n
+    real(DP) :: q
     !
     ! -- Copy rhs values into seg_lat_inflow
     do n = 1, this%dis%nodes
-      this%seg_lat_inflow(n) = -rhs(n)
+      q = -rhs(n)
+      this%seg_lat_inflow(n) = q
     end do
+
+    ! -- todo: this is a hack to assign flow
+    !          to the first segment
+    this%seg_inflow0_in(1) = -rhs(1)
 
     call calc_muskingum_mann( &
       this%dis%nodes, & !nseg, &  ! in int32
@@ -588,6 +630,7 @@ module SnfMmrModule
     !
     ! -- Deallocate arrays
     call mem_deallocate(this%iseg_order)
+    call mem_deallocate(this%qoutflow0)
     call mem_deallocate(this%mann_n)
     call mem_deallocate(this%seg_depth)
     call mem_deallocate(this%seg_slope)
@@ -631,6 +674,7 @@ module SnfMmrModule
     class(SnfMmrType) :: this !< this instance
     ! -- local
     integer(I4B) :: n
+    integer(I4B) :: ito_seg
     real(DP) :: v
     real(DP) :: tfact
     real(DP) :: d
@@ -741,6 +785,19 @@ module SnfMmrModule
       end if
     end do
 
+    ! -- todo: hack for first segment
+    this%seg_inflow0_in(1) = this%qoutflow0(1)
+
+    ! -- Set initial conditions
+    do n = 1, this%dis%nodes
+      this%outflow_ts_in(n) = this%qoutflow0(n)
+      ito_seg = this%disl%tosegment(n)
+      if (ito_seg > 0) then
+        this%seg_inflow0_in(ito_seg) = &
+          this%seg_inflow0_in(ito_seg) + this%qoutflow0(n)
+      end if
+    end do
+
     ! clean up
     deallocate(kcoef)
 
@@ -766,7 +823,7 @@ module SnfMmrModule
 !     to_segment: downstream segment for each segment
 !     seg_lateral_inflow: segment lateral inflow
 !     seg_inflow0: previous segment inflow variable (internal calculations)
-!     outflow_ts: outflow timeseries variable (internal calculations)
+!     outflow_ts_in: outflow timeseries variable (internal calculations)
 !     tsi: integer flood wave travel time
 !     ts: float version of integer flood wave travel time
 !     c0: Muskingum c0 variable
