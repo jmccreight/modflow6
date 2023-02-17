@@ -12,9 +12,7 @@ module SnfMmrInputModule
     logical :: iprflow = .false.
     logical :: iseg_order = .false.
     logical :: qoutflow0 = .false.
-    logical :: mann_n = .false.
-    logical :: seg_depth = .false.
-    logical :: seg_slope = .false.
+    logical :: k_coef = .false.
     logical :: x_coef = .false.
   end type SnfMmrParamFoundType
 
@@ -83,45 +81,13 @@ module SnfMmrInputModule
     )
 
   type(InputParamDefinitionType), parameter :: &
-    snfmmr_mann_n = InputParamDefinitionType &
+    snfmmr_k_coef = InputParamDefinitionType &
     ( &
     'SNF', & ! component
     'MMR', & ! subcomponent
     'GRIDDATA', & ! block
-    'MANN_N', & ! tag name
-    'MANN_N', & ! fortran variable
-    'DOUBLE1D', & ! type
-    'NODES', & ! shape
-    .true., & ! required
-    .false., & ! multi-record
-    .false., & ! preserve case
-    .false. & ! layered
-    )
-
-  type(InputParamDefinitionType), parameter :: &
-    snfmmr_seg_depth = InputParamDefinitionType &
-    ( &
-    'SNF', & ! component
-    'MMR', & ! subcomponent
-    'GRIDDATA', & ! block
-    'SEG_DEPTH', & ! tag name
-    'SEG_DEPTH', & ! fortran variable
-    'DOUBLE1D', & ! type
-    'NODES', & ! shape
-    .true., & ! required
-    .false., & ! multi-record
-    .false., & ! preserve case
-    .false. & ! layered
-    )
-
-  type(InputParamDefinitionType), parameter :: &
-    snfmmr_seg_slope = InputParamDefinitionType &
-    ( &
-    'SNF', & ! component
-    'MMR', & ! subcomponent
-    'GRIDDATA', & ! block
-    'SEG_SLOPE', & ! tag name
-    'SEG_SLOPE', & ! fortran variable
+    'K_COEF', & ! tag name
+    'K_COEF', & ! fortran variable
     'DOUBLE1D', & ! type
     'NODES', & ! shape
     .true., & ! required
@@ -153,9 +119,7 @@ module SnfMmrInputModule
     snfmmr_iprflow, &
     snfmmr_iseg_order, &
     snfmmr_qoutflow0, &
-    snfmmr_mann_n, &
-    snfmmr_seg_depth, &
-    snfmmr_seg_slope, &
+    snfmmr_k_coef, &
     snfmmr_x_coef &
     ]
 

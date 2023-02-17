@@ -44,37 +44,15 @@ longname initial flows
 description initial outflow from the reach at time zero
 
 block griddata
-name mann_n
+name k_coef
 type double precision
 shape (nodes)
 valid
 reader readarray
 layered false
 optional
-longname manning roughness coefficient
-description manning roughness coefficient
-
-block griddata
-name seg_depth
-type double precision
-shape (nodes)
-valid
-reader readarray
-layered false
-optional
-longname segment depth
-description Depth of bankfull water in segment
-
-block griddata
-name seg_slope
-type double precision
-shape (nodes)
-valid
-reader readarray
-layered false
-optional
-longname surface slope
-description surface slope of each segment
+longname manning K coefficient
+description manning K coefficient
 
 block griddata
 name x_coef
