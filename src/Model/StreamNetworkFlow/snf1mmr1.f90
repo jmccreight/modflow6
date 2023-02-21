@@ -11,9 +11,14 @@ module SnfMmrModule
                              DZERO, DHALF, DONE, DTWO, DTHREE
   use MemoryHelperModule, only: create_mem_path
   use MemoryManagerModule, only: mem_allocate
+  use SimVariablesModule, only: errmsg, warnmsg
+  use SimModule, only: count_errors, store_error, store_error_unit
   use NumericalPackageModule, only: NumericalPackageType
   use BaseDisModule, only: DisBaseType
   use SnfDislModule, only: SnfDislType
+  use ObsModule, only: ObsType, obs_cr
+  use ObsModule, only: DefaultObsIdProcessor
+  use ObserveModule, only: ObserveType
 
   implicit none
   private
@@ -37,13 +42,19 @@ module SnfMmrModule
     real(DP), dimension(:), pointer, contiguous :: c2 => null() !< Muskingum c2 variable
 
     ! -- budget vectors
-    real(DP), dimension(:), pointer, contiguous :: extoutflow => null() !< flows leaving model (for tosegment = 0)
+    real(DP), dimension(:), pointer, contiguous :: qextoutflow => null() !< flows leaving model (for tosegment = 0)
     real(DP), dimension(:), pointer, contiguous :: qsto => null() !< storage rates
 
     ! -- pointer to concrete disl subclass of DisBaseType
     type(SnfDislType), pointer :: disl
 
+    ! -- observation data
+    integer(I4B), pointer :: inobspkg => null() !< unit number for obs package
+    type(ObsType), pointer :: obs => null() !< observation package
+    
   contains
+
+    procedure :: allocate_scalars
     procedure :: allocate_arrays
     procedure :: mmr_load
     procedure :: source_options
@@ -51,6 +62,7 @@ module SnfMmrModule
     procedure :: source_griddata
     procedure :: log_griddata
     procedure :: mmr_ar
+    procedure :: mmr_rp
     procedure :: mmr_ad
     procedure :: mmr_init_data
     procedure :: mmr_solve
@@ -59,6 +71,10 @@ module SnfMmrModule
     procedure :: mmr_save_model_flows
     procedure :: mmr_print_model_flows
     procedure :: mmr_da
+    procedure :: mmr_df_obs
+    procedure :: mmr_rp_obs
+    procedure :: mmr_bd_obs
+
   end type SnfMmrType
 
   contains
@@ -96,6 +112,9 @@ module SnfMmrModule
       mmrobj%disl => dis
     end select
 
+    ! -- create obs package
+    call obs_cr(mmrobj%obs, mmrobj%inobspkg)
+
     !
     ! -- if reading from file
     if (inunit > 0) then
@@ -115,6 +134,28 @@ module SnfMmrModule
     ! -- Return
     return
   end subroutine mmr_cr
+
+  !> @ brief Allocate scalars
+  !!
+  !! Allocate and initialize scalars for the package. The base model
+  !! allocate scalars method is also called.
+  !!
+  !<
+  subroutine allocate_scalars(this)
+    ! -- modules
+    ! -- dummy
+    class(SnfMmrtype) :: this
+    !
+    ! -- allocate scalars in NumericalPackageType
+    call this%NumericalPackageType%allocate_scalars()
+    !
+    ! -- Allocate scalars
+    call mem_allocate(this%inobspkg, 'INOBSPKG', this%memoryPath)
+
+    this%inobspkg = 0
+
+    return
+  end subroutine allocate_scalars
 
   !> @brief allocate memory for arrays
   !<
@@ -140,7 +181,7 @@ module SnfMmrModule
     call mem_allocate(this%c2, this%dis%nodes, 'C2', this%memoryPath)
 
     ! -- budgeting variables
-    call mem_allocate(this%extoutflow, this%dis%nodes, 'EXTOUTFLOW', this%memoryPath)
+    call mem_allocate(this%qextoutflow, this%dis%nodes, 'QEXTOUTFLOW', this%memoryPath)
     call mem_allocate(this%qsto, this%dis%nodes, 'QSTO', this%memoryPath)
 
     do n = 1, this%dis%nodes
@@ -158,7 +199,7 @@ module SnfMmrModule
       this%c1(n) = DZERO
       this%c2(n) = DZERO
 
-      this%extoutflow(n) = DZERO
+      this%qextoutflow(n) = DZERO
       this%qsto(n) = DZERO
 
     end do
@@ -187,6 +228,7 @@ module SnfMmrModule
   subroutine source_options(this)
     ! -- modules
     use KindModule, only: LGP
+    use InputOutputModule, only: getunit, openfile
     use MemoryManagerExtModule, only: mem_set_value
     use SimVariablesModule, only: idm_context
     use SnfMmrInputModule, only: SnfMmrParamFoundType
@@ -202,6 +244,18 @@ module SnfMmrModule
     ! -- update defaults with idm sourced values
     call mem_set_value(this%iprflow, 'IPRFLOW', idmMemoryPath, found%iprflow)
     call mem_set_value(this%ipakcb, 'IPAKCB', idmMemoryPath, found%ipakcb)
+    call mem_set_value(this%obs%inputFilename, 'OBS6_FILENAME', idmMemoryPath, &
+                       found%obs6_filename)
+
+    if (found%obs6_filename) then
+      this%obs%active = .true.
+      this%inobspkg = GetUnit()
+      this%obs%inUnitObs = this%inobspkg
+      call openfile(this%inobspkg, this%iout, this%obs%inputFilename, 'OBS')
+      call this%obs%obs_df(this%iout, this%packName, this%filtyp, this%dis)
+      call this%mmr_df_obs()
+    end if
+
     !
     ! -- log values to list file
     if (this%iout > 0) then
@@ -250,7 +304,6 @@ module SnfMmrModule
     class(SnfMmrType) :: this
     ! -- locals
     character(len=LENMEMPATH) :: idmMemoryPath
-    character(len=LINELENGTH) :: errmsg
     type(SnfMmrParamFoundType) :: found
     integer(I4B), dimension(:), pointer, contiguous :: map
     ! -- formats
@@ -330,7 +383,7 @@ module SnfMmrModule
 
   end subroutine log_griddata
 
-  !> @brief deallocate memory
+  !> @brief allocate memory
   !<
   subroutine mmr_ar(this)
     ! -- modules
@@ -338,13 +391,28 @@ module SnfMmrModule
     class(SnfMmrType) :: this !< this instance
     !
 
+    ! - observation data
+    call this%obs%obs_ar()
+
+    ! -- initialize routing variables
     call this%mmr_init_data()
 
     return
   end subroutine mmr_ar
 
+  !> @brief allocate memory
+  !<
+  subroutine mmr_rp(this)
+    ! -- modules
+    ! -- dummy
+    class(SnfMmrType) :: this !< this instance
+    !
+    ! -- read observations
+    call this%mmr_rp_obs()
+    return
+  end subroutine mmr_rp
+
   subroutine mmr_ad(this, irestore)
-    use TdisModule, only: kper, kstp
     !
     class(SnfMmrType) :: this
     integer(I4B), intent(in) :: irestore
@@ -362,6 +430,10 @@ module SnfMmrModule
         this%outflow_new(n) = this%outflow_old(n)
       end do
     end if
+
+    ! -- Push simulated values to preceding time/subtime step
+    call this%obs%obs_ad()
+
     !
     ! -- Return
     return
@@ -431,12 +503,12 @@ module SnfMmrModule
       end do
     end do
 
-    ! Transfer any flows leaving tosegment 0 into extoutflow
+    ! Transfer any flows leaving tosegment 0 into qextoutflow
     do n = 1, this%dis%nodes
       if (this%disl%tosegment(n) == 0) then
-        this%extoutflow(n) = -this%outflow_new(n)
+        this%qextoutflow(n) = -this%outflow_new(n)
       else
-        this%extoutflow(n) = DZERO
+        this%qextoutflow(n) = DZERO
       end if
     end do
 
@@ -469,7 +541,7 @@ module SnfMmrModule
     real(DP) :: rout
     !
     ! -- Add external outflow rates to model budget
-    call rate_accumulator(this%extoutflow, rin, rout)
+    call rate_accumulator(this%qextoutflow, rin, rout)
     call model_budget%addentry(rin, rout, delt, '             MMR', &
                                isuppress_output, '     EXT-OUTFLOW')
     !
@@ -587,8 +659,14 @@ module SnfMmrModule
     call mem_deallocate(this%c2)
 
     ! -- budget variables
-    call mem_deallocate(this%extoutflow)
+    call mem_deallocate(this%qextoutflow)
     call mem_deallocate(this%qsto)
+
+    ! -- obs package
+    call mem_deallocate(this%inobspkg)
+    call this%obs%obs_da()
+    deallocate (this%obs)
+    nullify (this%obs)
 
     ! -- deallocate parent
     call this%NumericalPackageType%da()
@@ -656,5 +734,163 @@ module SnfMmrModule
     end do
 
   end subroutine calc_muskingum
+
+  !> @brief Define the observation types available in the package
+  !!
+  !! Method to define the observation types available in the package.
+  !!
+  !<
+  subroutine mmr_df_obs(this)
+    ! -- dummy variables
+    class(SnfMmrType) :: this !< SnfMmrType object
+    ! -- local variables
+    integer(I4B) :: indx
+    !
+    ! -- Store obs type and assign procedure pointer
+    !    for ext-outflow observation type.
+    call this%obs%StoreObsType('ext-outflow', .true., indx)
+    this%obs%obsData(indx)%ProcessIdPtr => mmrobsidprocessor
+    !
+    ! -- return
+    return
+  end subroutine mmr_df_obs
+
+
+  subroutine mmrobsidprocessor(obsrv, dis, inunitobs, iout)
+    ! -- dummy
+    type(ObserveType), intent(inout) :: obsrv
+    class(DisBaseType), intent(in) :: dis
+    integer(I4B), intent(in) :: inunitobs
+    integer(I4B), intent(in) :: iout
+    ! -- local
+    integer(I4B) :: n
+    integer(I4B) :: icol, istart, istop
+    character(len=LINELENGTH) :: strng
+    logical :: flag_string
+    !
+    ! -- Initialize variables
+    strng = obsrv%IDstring
+    read(strng, *) n
+    !
+    if (n > 0) then
+      obsrv%NodeNumber = n
+    else
+      errmsg = 'Error reading data from ID string'
+      call store_error(errmsg)
+      call store_error_unit(inunitobs)
+    end if
+    !
+    return
+  end subroutine mmrobsidprocessor
+
+
+  !> @brief Save observations for the package
+  !!
+  !! Method to save simulated values for the package.
+  !!
+  !<
+  subroutine mmr_bd_obs(this)
+    ! -- dummy variables
+    class(SnfMmrType) :: this !< SnfMmrType object
+    ! -- local variables
+    integer(I4B) :: i
+    integer(I4B) :: j
+    integer(I4B) :: n
+    real(DP) :: v
+    character(len=100) :: msg
+    type(ObserveType), pointer :: obsrv => null()
+    !
+    ! Write simulated values for all observations
+    if (this%obs%npakobs > 0) then
+      call this%obs%obs_bd_clear()
+      do i = 1, this%obs%npakobs
+        obsrv => this%obs%pakobs(i)%obsrv
+        do j = 1, obsrv%indxbnds_count
+          n = obsrv%indxbnds(j)
+          v = DZERO
+          select case (obsrv%ObsTypeId)
+          case ('EXT-OUTFLOW')
+            v = this%qextoutflow(n)
+          case default
+            msg = 'Unrecognized observation type: '//trim(obsrv%ObsTypeId)
+            call store_error(msg)
+          end select
+          call this%obs%SaveOneSimval(obsrv, v)
+        end do
+      end do
+      !
+      ! -- write summary of package error messages
+      if (count_errors() > 0) then
+        call this%parser%StoreErrorUnit()
+      end if
+    end if
+    !
+    ! -- return
+    return
+  end subroutine mmr_bd_obs
+
+  !> @brief Read and prepare observations for a package
+  !!
+  !! Method to read and prepare observations for a package.
+  !!
+  !<
+  subroutine mmr_rp_obs(this)
+    ! -- modules
+    use TdisModule, only: kper
+    ! -- dummy variables
+    class(SnfMmrType), intent(inout) :: this !< SnfMmrType object
+    ! -- local variables
+    integer(I4B) :: i
+    integer(I4B) :: j
+    integer(I4B) :: nn1
+    class(ObserveType), pointer :: obsrv => null()
+    ! -- formats
+    !
+    ! -- process each package observation
+    !    only done the first stress period since boundaries are fixed
+    !    for the simulation
+    if (kper == 1) then
+      do i = 1, this%obs%npakobs
+        obsrv => this%obs%pakobs(i)%obsrv
+        !
+        ! -- get node number 1
+        nn1 = obsrv%NodeNumber
+        if (nn1 < 1 .or. nn1 > this%disl%nodes) then
+          write (errmsg, '(a,1x,a,1x,i0,1x,a,1x,i0,a)') &
+            trim(adjustl(obsrv%ObsTypeId)), &
+            'reach must be greater than 0 and less than or equal to', &
+            this%disl%nodes, '(specified value is ', nn1, ')'
+          call store_error(errmsg)
+        else
+          if (obsrv%indxbnds_count == 0) then
+            call obsrv%AddObsIndex(nn1)
+          else
+            errmsg = 'Programming error in mmr_rp_obs'
+            call store_error(errmsg)
+          end if
+        end if
+        !
+        ! -- check that node number 1 is valid; call store_error if not
+        do j = 1, obsrv%indxbnds_count
+          nn1 = obsrv%indxbnds(j)
+          if (nn1 < 1 .or. nn1 > this%disl%nodes) then
+            write (errmsg, '(a,1x,a,1x,i0,1x,a,1x,i0,a)') &
+              trim(adjustl(obsrv%ObsTypeId)), &
+              'reach must be greater than 0 and less than or equal to', &
+              this%disl%nodes, '(specified value is ', nn1, ')'
+            call store_error(errmsg)
+          end if
+        end do
+      end do
+      !
+      ! -- evaluate if there are any observation errors
+      if (count_errors() > 0) then
+        call this%parser%StoreErrorUnit()
+      end if
+    end if
+    !
+    ! -- return
+    return
+  end subroutine mmr_rp_obs
 
 end module SnfMmrModule

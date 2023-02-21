@@ -62,6 +62,7 @@ module SnfModule
     procedure :: model_bd => snf_bd
     procedure :: model_ot => snf_ot
     procedure :: model_da => snf_da
+    procedure :: snf_ot_obs
     procedure :: snf_ot_flow
     procedure :: snf_ot_bdsummary
     procedure :: package_create
@@ -360,7 +361,7 @@ module SnfModule
     if (.not. readnewdata) return
     !
     ! -- Read and prepare
-    !if (this%inmmr > 0) call this%mmr%mmr_rp()
+    if (this%inmmr > 0) call this%mmr%mmr_rp()
     !if (this%inoc > 0) call this%oc%oc_rp()
     !if (this%insto > 0) call this%sto%sto_rp()
     !if (this%inmvr > 0) call this%mvr%mvr_rp()
@@ -540,7 +541,7 @@ module SnfModule
   !> @brief GroundWater Flow Model Output
   subroutine snf_ot(this)
     ! -- modules
-    use TdisModule, only: kstp, kper, tdis_ot, endofperiod
+    use TdisModule, only: kstp, kper, tdis_ot
     ! -- dummy
     class(SnfModelType) :: this
     ! -- local
@@ -571,8 +572,8 @@ module SnfModule
     ! ibudfl = this%oc%set_print_flag('BUDGET', this%icnvg, endofperiod)
     ! idvprint = this%oc%set_print_flag('HEAD', this%icnvg, endofperiod)
     !
-    !   Calculate and save observations
-    ! call this%gwf_ot_obs()
+    ! Calculate and save observations
+    call this%snf_ot_obs()
     ! !
     !   Save and print flows
     call this%snf_ot_flow(icbcfl, ibudfl, icbcun)
@@ -595,6 +596,26 @@ module SnfModule
     ! -- Return
     return
   end subroutine snf_ot
+
+  subroutine snf_ot_obs(this)
+    class(SnfModelType) :: this
+    class(BndType), pointer :: packobj
+    integer(I4B) :: ip
+
+    ! -- Calculate and save mmr observations
+    if (this%inmmr > 0) then
+      call this%mmr%mmr_bd_obs()
+      call this%mmr%obs%obs_ot()
+    end if
+
+    ! -- Calculate and save package observations
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_bd_obs()
+      call packobj%bnd_ot_obs()
+    end do
+
+  end subroutine snf_ot_obs
 
   subroutine snf_ot_flow(this, icbcfl, ibudfl, icbcun)
     class(SnfModelType) :: this

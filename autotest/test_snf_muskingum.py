@@ -1,17 +1,17 @@
 """
 
-http://uon.sdsu.edu/the_thomas_problem_with_online_computation.html
-Thomas routine example
-500 miles
-dx = 25 miles
-sinusoidal inflow
-
+http://uon.sdsu.edu/enghydro/engineering_hydrology_09.php#muskingum
+Ponce -- Muskingum routing example
+single reach
 """
 
 import os
 
 import flopy
 import numpy as np
+import pytest
+from framework import TestFramework
+from simulation import TestSimulation
 
 
 # data from ponce Table 9-1
@@ -56,12 +56,16 @@ def get_ponce_data():
     return time_days, qinflow, qoutflow
 
 
-def test_snf_muskingum(function_tmpdir, targets):
-    sim_ws = str(function_tmpdir)
-    mf6 = targets["mf6"]
-    name = "snf-muskingum"
+ex = ["ponce01",]
+
+
+def build_model(idx, dir):
+
+    sim_ws = dir
+    name = ex[idx]
     sim = flopy.mf6.MFSimulation(
-        sim_name=name, version="mf6", exe_name=mf6, sim_ws=sim_ws
+        sim_name=name, version="mf6", exe_name="mf6", sim_ws=sim_ws,
+        memory_print_option='all',
     )
     nper = 25
     tdis_rc = [(1., 1, 1.0) for ispd in range(nper)]
@@ -73,7 +77,7 @@ def test_snf_muskingum(function_tmpdir, targets):
     cell2d = None
     nvert = None
 
-    nodes = 2
+    nodes = 1
     channel_length = 500. # miles
     channel_length = channel_length * 5280. / 3.2808 # meters
     segment_length = channel_length * 5280. / nodes
@@ -88,15 +92,26 @@ def test_snf_muskingum(function_tmpdir, targets):
         nodes=nodes, 
         nvert=nvert,
         segment_length=segment_length,
-        tosegment=[1, -1],   # -1 gives 0 in one-based, which means outflow cell
-        idomain=1, 
+        tosegment=[(-1,)],   # (-1,) gives 0 in one-based, which means outflow cell
+        idomain=1,
         vertices=vertices, 
         cell2d=cell2d,
     )
     
+
+    # note: for specifying lake number, use fortran indexing!
+    fname = f"{name}.mmr.obs.csv"
+    mmr_obs = {
+        fname: [
+            ("OUTFLOW1", "EXT-OUTFLOW", 1),
+        ],
+        "digits": 10,
+    }
+
     mmr = flopy.mf6.ModflowSnfmmr(
         snf, 
         print_flows=True,
+        observations=mmr_obs,
         iseg_order=list(range(nodes)),
         qoutflow0=qinflow[0],
         k_coef=k_coef, 
@@ -112,32 +127,53 @@ def test_snf_muskingum(function_tmpdir, targets):
         stress_period_data=flw_spd,
     )
 
-    sim.write_simulation()
-
-    mfsimnamtxt = f"""BEGIN options
-END options
-
-BEGIN timing
-  TDIS6  {name}.tdis
-END timing
-
-BEGIN models
-  snf6  {name}.nam  {name}
-END models
-
-BEGIN exchanges
-END exchanges
-
-BEGIN SOLUTIONGROUP 1
-  EMS6 {name}.ems {name}
-END SOLUTIONGROUP
-"""
-    #fname = os.path.join(sim_ws, 'mfsim.nam')
-    #with open(fname, 'w') as f:
-    #    f.write(mfsimnamtxt)
+    return sim, None
 
 
-    success, buff = sim.run_simulation(silent=False)
-    errmsg = f"model did not terminate successfully\n{buff}"
-    assert success, errmsg
+def eval_model(sim):
+    print("evaluating model...")
 
+    # get back the ponce data for comparison
+    time_days, qinflow, qoutflow = get_ponce_data()
+
+    # read the observation output
+    name = ex[sim.idxsim]
+    fpth = os.path.join(sim.simpath, f"{name}.mmr.obs.csv")
+    obsvals = np.genfromtxt(fpth, names=True, delimiter=",")
+
+    # compare output with known result
+    time_days = time_days[1:]
+    qoutflow = -np.array(qoutflow[1:])
+    atol = 0.06
+    success = np.allclose(qoutflow, obsvals["OUTFLOW1"], atol=atol)
+    if not success:
+        for i, t in enumerate(time_days):
+            qa = qoutflow[i]
+            qs = obsvals["OUTFLOW1"][i]
+            d = qa - qs
+            if i == 0:
+                maxdiff = d
+            else:
+                if d > maxdiff:
+                    maxdiff = d
+            print(t, qa, qs, d)
+        print(f"maximum difference is {maxdiff}")
+    assert success
+
+    return
+
+
+@pytest.mark.parametrize(
+    "idx, name",
+    list(enumerate(ex)),
+)
+def test_mf6model(idx, name, function_tmpdir, targets):
+    ws = str(function_tmpdir)
+    test = TestFramework()
+    test.build(build_model, idx, ws)
+    test.run(
+        TestSimulation(
+            name=name, exe_dict=targets, exfunc=eval_model, idxsim=idx
+        ),
+        ws,
+    )

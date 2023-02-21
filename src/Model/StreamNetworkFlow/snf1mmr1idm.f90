@@ -10,6 +10,9 @@ module SnfMmrInputModule
   type SnfMmrParamFoundType
     logical :: ipakcb = .false.
     logical :: iprflow = .false.
+    logical :: obs_filerecord = .false.
+    logical :: obs6 = .false.
+    logical :: obs6_filename = .false.
     logical :: iseg_order = .false.
     logical :: qoutflow0 = .false.
     logical :: k_coef = .false.
@@ -44,6 +47,54 @@ module SnfMmrInputModule
     '', & ! shape
     .false., & ! required
     .false., & ! multi-record
+    .false., & ! preserve case
+    .false. & ! layered
+    )
+
+  type(InputParamDefinitionType), parameter :: &
+    snfmmr_obs_filerecord = InputParamDefinitionType &
+    ( &
+    'SNF', & ! component
+    'MMR', & ! subcomponent
+    'OPTIONS', & ! block
+    'OBS_FILERECORD', & ! tag name
+    'OBS_FILERECORD', & ! fortran variable
+    'RECORD OBS6 FILEIN OBS6_FILENAME', & ! type
+    '', & ! shape
+    .false., & ! required
+    .false., & ! multi-record
+    .false., & ! preserve case
+    .false. & ! layered
+    )
+
+  type(InputParamDefinitionType), parameter :: &
+    snfmmr_obs6 = InputParamDefinitionType &
+    ( &
+    'SNF', & ! component
+    'MMR', & ! subcomponent
+    'OPTIONS', & ! block
+    'OBS6', & ! tag name
+    'OBS6', & ! fortran variable
+    'KEYWORD', & ! type
+    '', & ! shape
+    .true., & ! required
+    .true., & ! multi-record
+    .false., & ! preserve case
+    .false. & ! layered
+    )
+
+  type(InputParamDefinitionType), parameter :: &
+    snfmmr_obs6_filename = InputParamDefinitionType &
+    ( &
+    'SNF', & ! component
+    'MMR', & ! subcomponent
+    'OPTIONS', & ! block
+    'OBS6_FILENAME', & ! tag name
+    'OBS6_FILENAME', & ! fortran variable
+    'STRING', & ! type
+    '', & ! shape
+    .true., & ! required
+    .true., & ! multi-record
     .false., & ! preserve case
     .false. & ! layered
     )
@@ -117,6 +168,9 @@ module SnfMmrInputModule
     [ &
     snfmmr_ipakcb, &
     snfmmr_iprflow, &
+    snfmmr_obs_filerecord, &
+    snfmmr_obs6, &
+    snfmmr_obs6_filename, &
     snfmmr_iseg_order, &
     snfmmr_qoutflow0, &
     snfmmr_k_coef, &
