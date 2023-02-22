@@ -12,15 +12,18 @@
 !!   DONE -- Implement FLW Package to handle lateral and point inflows
 !!   DONE -- Transfer results into the flowja vector
 !!   DONE -- Implement strategy for storing outflow terms and getting them into budget
-!!   Implement SNF and FLW advance routines to handle transient problems
+!!   DONE -- Implement SNF and FLW advance routines to handle transient problems
+!!   DONE -- Implement storage terms and getting them into budget
+!!   DONE -- Observations
+!!   DONE -- Initial conditions?
+!!   DONE -- Rework the Iterative Model Solution (IMS6) to handle both implicit and explicit models
+!!   Implement two types of inflow packages, one for lateral flows and flows that add to
+!!     flows from upstream reaches, and another package for specifying the total flow into a reach,
+!!     which would override flows from upstream (this could also be handled by setting tosegment to 0)
 !!   Implement output control
 !!   Flopy support for DISL and DISL binary grid file
-!!   Implement storage terms and getting them into budget
-!!   Observations
 !!   mf6io guide
-!!   Initial conditions?
 !!   Deal with the timestep and subtiming issues
-!!   Rework the Iterative Model Solution (IMS6) to handle both implicit and explicit models
 !!   Mover support?
 !!   SNF-SNF Exchange
 !!   SNF-SNF Exchange in parallel
@@ -448,8 +451,6 @@ module SnfModule
       call packobj%bnd_cf()
 
       ! accumulate individual package rhs into this%rhs
-      ! todo: will need to rethink if/how we use packobj
-      !       rhs to store/add flows
       do i = 1, packobj%nbound
         n = packobj%nodelist(i)
         if (this%ibound(n) > 0) then
@@ -720,6 +721,8 @@ module SnfModule
     !
     ! -- Scalars
     call mem_deallocate(this%inmmr)
+    !
+    ! -- Arrays
     !
     ! -- NumericalModelType
     call this%NumericalModelType%model_da()

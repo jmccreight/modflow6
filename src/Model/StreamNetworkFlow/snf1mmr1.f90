@@ -448,37 +448,13 @@ module SnfMmrModule
     class(SnfMmrType) :: this !< this instance
     real(DP), dimension(:), intent(in) :: rhs !< right-hand-side vector of boundary package inflows
     ! -- local
-    integer(I4B) :: n
-    real(DP) :: q
-    real(DP) :: dtoverk
-    real(DP) :: twox
-    real(DP) :: two_oneminusx
-    real(DP) :: denom
-    !
-    ! -- Copy rhs values into seg_lat_inflow
-    do n = 1, this%dis%nodes
-      if (n == 1) then  ! hack to have inflow_new keep rhs value
-        q = -rhs(n)
-        this%inflow_new(n) = q
-      else
-        this%inflow_new(n) = DZERO
-      end if
-    end do
 
-    ! -- Calculate muskingum C coefficients, using Ponce versions
-    do n = 1, this%dis%nodes
-      dtoverk = delt / this%k_coef(n)
-      twox = DTWO * this%x_coef(n)
-      two_oneminusx = DTWO * (DONE - this%x_coef(n))
-      denom = two_oneminusx + dtoverk
-      this%c0(n) = (dtoverk - twox) / denom
-      this%c1(n) = (dtoverk + twox) / denom
-      this%c2(n) = (two_oneminusx - dtoverk) / denom
-    end do
+    call calc_muskingum_coefficients(delt, this%k_coef, this%x_coef, this%c0, &
+                                     this%c1, this%c2)
 
     call calc_muskingum(this%disl%tosegment, this%iseg_order, this%inflow_old, &
                         this%outflow_old, this%inflow_new, this%outflow_new, &
-                        this%c0, this%c1, this%c2)
+                        this%c0, this%c1, this%c2, -rhs)
 
     ! -- return
     return
@@ -676,6 +652,10 @@ module SnfMmrModule
   end subroutine mmr_da
 
   !> @brief initialize mmr data
+  !!
+  !! This routine is only called once at the beginning of
+  !! the simulation from mmr_ar()
+  !!
   !<
   subroutine mmr_init_data(this)
     ! -- modules
@@ -684,6 +664,7 @@ module SnfMmrModule
     ! -- local
     integer(I4B) :: n
     integer(I4B) :: ito_seg
+    integer(I4B), dimension(:), allocatable :: nupreaches
 
     ! -- Set inflow_new and outflow_new from qoutflow0
     !    These will be copied into inflow_old and outflow_old
@@ -697,15 +678,70 @@ module SnfMmrModule
       end if
     end do
 
-    ! TODO: HACK, this must be done from initial conditions somehow
-    this%inflow_new(1) = this%outflow_new(1)
+    ! -- Calculate the number of upstream reaches connected to each reach,
+    !    which is then used in the subsequent section to initialize the
+    !    flow conditions
+    allocate(nupreaches(this%dis%nodes))
+    do n = 1, this%dis%nodes
+      nupreaches(n) = 0
+    end do
+    do n = 1, this%dis%nodes
+      ito_seg = this%disl%tosegment(n)
+      if (ito_seg > 0) then
+        nupreaches(ito_seg) = nupreaches(ito_seg) + 1
+      end if
+    end do
+
+    ! -- For any cells that do not have inflow via upstream reaches,
+    !    the inflow_new term should be set to the initial outflow
+    !    for the reach, qoutflow0
+    do n = 1, this%dis%nodes
+      if (nupreaches(n) == 0) then
+        this%inflow_new(n) = this%qoutflow0(n)
+      end if
+    end do
 
     ! -- return
     return
   end subroutine mmr_init_data
 
+  !> @brief calculate muskingum c0, c1, c2 coefficients
+  !<
+  subroutine calc_muskingum_coefficients(delt, k_coef, x_coef, c0, c1, c2)
+    ! -- modules
+    ! -- dummy
+    real(DP), intent(in) :: delt !< Length of time step
+    real(DP), dimension(:), intent(in) :: k_coef !< Muskingum K coefficient
+    real(DP), dimension(:), intent(in) :: x_coef !< Muskingum K coefficient
+    real(DP), dimension(:), intent(inout) :: c0 !< Muskingum K coefficient
+    real(DP), dimension(:), intent(inout) :: c1 !< Muskingum K coefficient
+    real(DP), dimension(:), intent(inout) :: c2 !< Muskingum K coefficient
+    ! -- local
+    integer(I4B) :: n
+    real(DP) :: q
+    real(DP) :: dtoverk
+    real(DP) :: twox
+    real(DP) :: two_oneminusx
+    real(DP) :: denom
+
+    ! -- Calculate muskingum C coefficients, using Ponce equations
+    do n = 1, size(k_coef)
+      dtoverk = delt / k_coef(n)
+      twox = DTWO * x_coef(n)
+      two_oneminusx = DTWO * (DONE - x_coef(n))
+      denom = two_oneminusx + dtoverk
+      c0(n) = (dtoverk - twox) / denom
+      c1(n) = (dtoverk + twox) / denom
+      c2(n) = (two_oneminusx - dtoverk) / denom
+    end do
+
+    ! -- return
+    return
+  end subroutine calc_muskingum_coefficients
+
   subroutine calc_muskingum(itosegment, iseg_order, inflow_old, outflow_old, &
-                            inflow_new, outflow_new, c0, c1, c2)
+                            inflow_new, outflow_new, c0, c1, c2, qsource)
+    ! -- dummy
     integer(I4B), dimension(:), intent(in) :: itosegment
     integer(I4B), dimension(:), intent(in) :: iseg_order
     real(DP), dimension(:), intent(in) :: inflow_old
@@ -715,16 +751,25 @@ module SnfMmrModule
     real(DP), dimension(:), intent(in) :: c0
     real(DP), dimension(:), intent(in) :: c1
     real(DP), dimension(:), intent(in) :: c2
-    ! TODO: HACK NEED LATERAL INFLOW
+    real(DP), dimension(:), intent(in) :: qsource
+    ! -- dummy
     integer(I4B) :: n
     integer(I4B) :: j
     integer(I4B) :: i
     real(DP) :: qoutflow
     real(DP) :: qinflow
 
+    ! -- Initialize inflow_new with any sources, such as lateral inflow
     do n = 1, size(itosegment)
       j = iseg_order(n)
-      qinflow = inflow_new(j) ! todo: hack + qlateral(j)
+      inflow_new(j) = qsource(j)
+    end do
+
+    ! -- Use Muskingum method to calculate outflows and accumulate
+    !    outflows in downstream reaches
+    do n = 1, size(itosegment)
+      j = iseg_order(n)
+      qinflow = inflow_new(j) !+ qsource(j)
       qoutflow = c0(j) * qinflow + c1(j) * inflow_old(j) + c2(j) * outflow_old(j)
       outflow_new(j) = qoutflow
       i = itosegment(j)
@@ -764,9 +809,7 @@ module SnfMmrModule
     integer(I4B), intent(in) :: iout
     ! -- local
     integer(I4B) :: n
-    integer(I4B) :: icol, istart, istop
     character(len=LINELENGTH) :: strng
-    logical :: flag_string
     !
     ! -- Initialize variables
     strng = obsrv%IDstring

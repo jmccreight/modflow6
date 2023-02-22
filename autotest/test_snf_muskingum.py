@@ -154,8 +154,8 @@ def eval_model(sim):
             if i == 0:
                 maxdiff = d
             else:
-                if d > maxdiff:
-                    maxdiff = d
+                if abs(d) > maxdiff:
+                    maxdiff = abs(d)
             print(t, qa, qs, d)
         print(f"maximum difference is {maxdiff}")
     assert success
