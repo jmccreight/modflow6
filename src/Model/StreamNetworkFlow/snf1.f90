@@ -17,13 +17,10 @@
 !!   DONE -- Observations
 !!   DONE -- Initial conditions?
 !!   DONE -- Rework the Iterative Model Solution (IMS6) to handle both implicit and explicit models
-!!   Implement two types of inflow packages, one for lateral flows and flows that add to
-!!     flows from upstream reaches, and another package for specifying the total flow into a reach,
-!!     which would override flows from upstream (this could also be handled by setting tosegment to 0)
+!!   Deal with the timestep and subtiming issues
 !!   Implement output control
 !!   Flopy support for DISL and DISL binary grid file
 !!   mf6io guide
-!!   Deal with the timestep and subtiming issues
 !!   Mover support?
 !!   SNF-SNF Exchange
 !!   SNF-SNF Exchange in parallel
