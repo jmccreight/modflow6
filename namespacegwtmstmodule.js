@@ -1,4 +1,31 @@
 var namespacegwtmstmodule =
 [
-    [ "gwtmsttype", "structgwtmstmodule_1_1gwtmsttype.html", "structgwtmstmodule_1_1gwtmsttype" ]
+    [ "gwtmsttype", "structgwtmstmodule_1_1gwtmsttype.html", "structgwtmstmodule_1_1gwtmsttype" ],
+    [ "allocate_arrays", "namespacegwtmstmodule.html#a57d0786badf360f7f302f2426402b982", null ],
+    [ "allocate_scalars", "namespacegwtmstmodule.html#a9d11d92183647bc768b266af6054f31d", null ],
+    [ "get_freundlich_conc", "namespacegwtmstmodule.html#a7677dc12366e5817f6f756c278d02ac5", null ],
+    [ "get_freundlich_derivative", "namespacegwtmstmodule.html#a5b55bd57b61eb65f144034426a8dcf9a", null ],
+    [ "get_langmuir_conc", "namespacegwtmstmodule.html#aead2e0c98106a0cb499e163e67231295", null ],
+    [ "get_langmuir_derivative", "namespacegwtmstmodule.html#acda372342b5163673cd16cd1fbdd7da9", null ],
+    [ "get_zero_order_decay", "namespacegwtmstmodule.html#a2b025361da5a358fd0c7d4c06ea2bf52", null ],
+    [ "mst_ar", "namespacegwtmstmodule.html#a946b4afceb1db25d4d884a4b52e0f0b8", null ],
+    [ "mst_bd", "namespacegwtmstmodule.html#a55c5b3f7739e5780f9c8174ed786f8b4", null ],
+    [ "mst_cq", "namespacegwtmstmodule.html#a478b81bdc62688ed1803ff103ad7385d", null ],
+    [ "mst_cq_dcy", "namespacegwtmstmodule.html#a9bc28b904447d8ef01cebab46e6ab33c", null ],
+    [ "mst_cq_dcy_srb", "namespacegwtmstmodule.html#a6a85e819e4468cd47eb01f1eba60e3f6", null ],
+    [ "mst_cq_srb", "namespacegwtmstmodule.html#a0fa9bb36f8c226b9ad2d28a5f0a08c3b", null ],
+    [ "mst_cq_sto", "namespacegwtmstmodule.html#ae1c3ef04226a8368969a56ec29766a74", null ],
+    [ "mst_cr", "namespacegwtmstmodule.html#adb0aad5ec852b458c2a6337129abc351", null ],
+    [ "mst_da", "namespacegwtmstmodule.html#ab997259f35f25e6dd916f95ce36c725f", null ],
+    [ "mst_fc", "namespacegwtmstmodule.html#ac2ccaf123ccaf1ffaeb7ba63a38f365c", null ],
+    [ "mst_fc_dcy", "namespacegwtmstmodule.html#abe3440d1c6e1f74a97645a7417574dfe", null ],
+    [ "mst_fc_dcy_srb", "namespacegwtmstmodule.html#aa2e4890aeeb39ecbe58ef8ba03b3b7bb", null ],
+    [ "mst_fc_srb", "namespacegwtmstmodule.html#a9778ab6afcd33f1e3ab65c7520734481", null ],
+    [ "mst_fc_sto", "namespacegwtmstmodule.html#ac5a85e6c654d7fb6295f843d3729d3fa", null ],
+    [ "mst_ot_flow", "namespacegwtmstmodule.html#a83986692420567168b2a0714c0f1d87e", null ],
+    [ "mst_srb_term", "namespacegwtmstmodule.html#a96ecd69908b9ab1400fe1531b8234b3f", null ],
+    [ "read_data", "namespacegwtmstmodule.html#a9d09f066cfdab8c675bf6191b267a71e", null ],
+    [ "read_options", "namespacegwtmstmodule.html#a8d176c88873cd8b526fe6db4c3f68ffb", null ],
+    [ "budtxt", "namespacegwtmstmodule.html#a32da4440492b0eee857aad5ec0dadec5", null ],
+    [ "nbditems", "namespacegwtmstmodule.html#ac0db1c5827de3221108759b936e53b3c", null ]
 ];

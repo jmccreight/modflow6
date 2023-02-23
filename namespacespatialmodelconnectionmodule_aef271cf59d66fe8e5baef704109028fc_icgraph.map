@@ -2,7 +2,7 @@
 <area shape="rect" id="node1" title="Cast to SpatialModelConnectionType." alt="" coords="1213,209,1475,251"/>
 <area shape="rect" id="node2" href="$namespacespatialmodelconnectionmodule.html#ab03c81ae159b53ae92e07d83d48cca29" title="Get the connection from a list." alt="" coords="907,209,1165,251"/>
 <area shape="rect" id="node3" href="$namespaceconnectionbuildermodule.html#aa5b7a09a35bdd2b85e44caea16bb075e" title="Add global exchanges from a certain numerical solution to the connections." alt="" coords="609,5,842,47"/>
-<area shape="rect" id="node4" href="$namespacegwfgwtexchangemodule.html#a186c9181959e0a9abaa5eca74675574a" title="Link GWT connection to GWF connection." alt="" coords="634,71,817,112"/>
+<area shape="rect" id="node4" href="$namespacegwfgwtexchangemodule.html#a186c9181959e0a9abaa5eca74675574a" title="Link GWT connections to GWF connections or exchanges." alt="" coords="634,71,817,112"/>
 <area shape="rect" id="node5" href="$namespacemf6coremodule.html#ae17efa5a9e03fd31617a08c08e20ae03" title="Finalize the simulation." alt="" coords="622,242,829,269"/>
 <area shape="rect" id="node9" href="$namespacemf6coremodule.html#aab3891c5763fe8a941e6799fe9c82388" title="Finalize time step." alt="" coords="593,137,857,163"/>
 <area shape="rect" id="node13" href="$namespacemf6coremodule.html#a40b8130d3cf17bc47fcb54c254aada8a" title="Read and prepare time step." alt="" coords="592,187,859,214"/>

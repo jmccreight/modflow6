@@ -33,6 +33,7 @@ var structxt3dmodule_1_1xt3dtype =
     [ "angle2", "structxt3dmodule_1_1xt3dtype.html#a323abf7dc18dc06c38ce192bef763ce2", null ],
     [ "angle3", "structxt3dmodule_1_1xt3dtype.html#ad46b2f5f78dc6133113227a2b56c7c9d", null ],
     [ "dis", "structxt3dmodule_1_1xt3dtype.html#a6819c301994aa2dad7297cb78b9a76b1", null ],
+    [ "ia_xt3d", "structxt3dmodule_1_1xt3dtype.html#acc6b8aaf035e1b27b239d2369398b930", null ],
     [ "iallpc", "structxt3dmodule_1_1xt3dtype.html#aea18488be2231ab33818cdeba3380e80", null ],
     [ "iangle1", "structxt3dmodule_1_1xt3dtype.html#a8e8c362f620cb5e438fce807da4c9a0a", null ],
     [ "iangle2", "structxt3dmodule_1_1xt3dtype.html#ab33cc5e96f4b257bf46c93d7f61d5c2d", null ],
@@ -47,6 +48,7 @@ var structxt3dmodule_1_1xt3dtype =
     [ "inunit", "structxt3dmodule_1_1xt3dtype.html#a8dfd0f05bc5c85533ce5cf9e66ce226a", null ],
     [ "iout", "structxt3dmodule_1_1xt3dtype.html#a15dbd9716d7f36613b2f0d7f8f51beba", null ],
     [ "ixt3d", "structxt3dmodule_1_1xt3dtype.html#a08e8eff98d1190ee23a3a0aaf550fe4a", null ],
+    [ "ja_xt3d", "structxt3dmodule_1_1xt3dtype.html#a509b88ac73d3a2f03a182fcb35d484c8", null ],
     [ "jax", "structxt3dmodule_1_1xt3dtype.html#aae4db1f839d2b2d485ab6aa53706a3e7", null ],
     [ "k11", "structxt3dmodule_1_1xt3dtype.html#a8da8c7b76b39531c2db248959336f10f", null ],
     [ "k22", "structxt3dmodule_1_1xt3dtype.html#a74169dbc848b0925e9423f3d90776b5f", null ],
@@ -58,7 +60,7 @@ var structxt3dmodule_1_1xt3dtype =
     [ "nozee", "structxt3dmodule_1_1xt3dtype.html#a7eb5ba8f3e9fbe40cd697a2c1e1193ea", null ],
     [ "numextnbrs", "structxt3dmodule_1_1xt3dtype.html#ab02d2924d43cd0b7f2f6b59ba12c799b", null ],
     [ "qsat", "structxt3dmodule_1_1xt3dtype.html#a7c33effc1f2b7c476b4d25c1222c6608", null ],
-    [ "rmatck", "structxt3dmodule_1_1xt3dtype.html#a2d8a724bd5bacf70389cbd1b802de4e4", null ],
+    [ "rmatck", "structxt3dmodule_1_1xt3dtype.html#a6aabeaa4574abba3bf4793f7fcc52283", null ],
     [ "sat", "structxt3dmodule_1_1xt3dtype.html#ae7498daacc5c9092e40bf6fd72b2ec82", null ],
     [ "vcthresh", "structxt3dmodule_1_1xt3dtype.html#abacfb2e287d1137cfee9772536f745fb", null ]
 ];

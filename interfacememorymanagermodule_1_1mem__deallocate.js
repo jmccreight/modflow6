@@ -1,5 +1,6 @@
 var interfacememorymanagermodule_1_1mem__deallocate =
 [
+    [ "deallocate_charstr1d", "interfacememorymanagermodule_1_1mem__deallocate.html#a9f62e37423e06fb08f3f143ca2b2fd17", null ],
     [ "deallocate_dbl", "interfacememorymanagermodule_1_1mem__deallocate.html#abc336be7f409a2cc2fc5f54c781e1eb6", null ],
     [ "deallocate_dbl1d", "interfacememorymanagermodule_1_1mem__deallocate.html#a4078ecb67a87955f08a6e85c1911451d", null ],
     [ "deallocate_dbl2d", "interfacememorymanagermodule_1_1mem__deallocate.html#a3f0636faa99d766b685240a1f654d199", null ],
@@ -10,5 +11,5 @@ var interfacememorymanagermodule_1_1mem__deallocate =
     [ "deallocate_int3d", "interfacememorymanagermodule_1_1mem__deallocate.html#a8e3b81f2e20d24ac0d5054e0da76253c", null ],
     [ "deallocate_logical", "interfacememorymanagermodule_1_1mem__deallocate.html#ad6c824535e379b3958aada59c9b3513f", null ],
     [ "deallocate_str", "interfacememorymanagermodule_1_1mem__deallocate.html#ab4b6807a4a5f7c460b662419d892cde5", null ],
-    [ "deallocate_str1d", "interfacememorymanagermodule_1_1mem__deallocate.html#ae9843b213451d3a15875a4ebe24ae250", null ]
+    [ "deallocate_str1d", "interfacememorymanagermodule_1_1mem__deallocate.html#aab226e29ba6ef38a1d46760ec3f60458", null ]
 ];

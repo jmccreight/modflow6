@@ -14,7 +14,6 @@ var structbasedismodule_1_1disbasetype =
     [ "fill_int_array", "structbasedismodule_1_1disbasetype.html#abacc5825254d8334bc9cae4c07b7ee07", null ],
     [ "get_area", "structbasedismodule_1_1disbasetype.html#adfbe39a18afd516174b284885e7e245b", null ],
     [ "get_cell_volume", "structbasedismodule_1_1disbasetype.html#a3d0e16be6d35db422f260f4a17240925", null ],
-    [ "get_cellxy", "structbasedismodule_1_1disbasetype.html#af193b9ca7d351727360dae9df36cf396", null ],
     [ "get_dis_type", "structbasedismodule_1_1disbasetype.html#ac152f1c6437a2ef9c65462a3ee60c27c", null ],
     [ "get_ncpl", "structbasedismodule_1_1disbasetype.html#abd7d1ad54a645e14c1dda0087f6af0ff", null ],
     [ "get_nodenumber", "structbasedismodule_1_1disbasetype.html#a90fcac0a0c942c866a81912fb57efb48", null ],
@@ -43,7 +42,6 @@ var structbasedismodule_1_1disbasetype =
     [ "record_srcdst_list_entry", "structbasedismodule_1_1disbasetype.html#ace29d2b175c4971847dc36effd54bce0", null ],
     [ "record_srcdst_list_header", "structbasedismodule_1_1disbasetype.html#a8dca4b7c7215a0396d33b6f6779efd43", null ],
     [ "supports_layers", "structbasedismodule_1_1disbasetype.html#ab3e5afb82f15fb868ea72fa49ea6ff9e", null ],
-    [ "transform_xy", "structbasedismodule_1_1disbasetype.html#abbeb8a35485c83a513ec53a8a161bf20", null ],
     [ "write_grb", "structbasedismodule_1_1disbasetype.html#ad7980892e426ad28babb87623827cd64", null ],
     [ "angrot", "structbasedismodule_1_1disbasetype.html#ad64e46df248ab983d58741b00b4fd2e3", null ],
     [ "area", "structbasedismodule_1_1disbasetype.html#a8215326bc4dce74f1103ae684f9835ef", null ],
@@ -65,9 +63,11 @@ var structbasedismodule_1_1disbasetype =
     [ "nodes", "structbasedismodule_1_1disbasetype.html#a272a12194edf7cac18e6515e1bcbba4b", null ],
     [ "nodesuser", "structbasedismodule_1_1disbasetype.html#ab80a8855200679bed036d524fa5825ae", null ],
     [ "nodeuser", "structbasedismodule_1_1disbasetype.html#a8857035eb0ad77fc489a4be7b2889390", null ],
+    [ "nogrb", "structbasedismodule_1_1disbasetype.html#a06e80662691aa37ee9dec58493d713ca", null ],
     [ "parser", "structbasedismodule_1_1disbasetype.html#aba6fea95df5bd3877546e76797450fa8", null ],
     [ "top", "structbasedismodule_1_1disbasetype.html#a62d5a5c1ee1eda91c1a8030ceeecd70c", null ],
-    [ "writegrb", "structbasedismodule_1_1disbasetype.html#ad67ab56681c4e29836372cd85cbbada4", null ],
+    [ "xc", "structbasedismodule_1_1disbasetype.html#ad6e27cb289a4599333e37e8e559ad9a9", null ],
     [ "xorigin", "structbasedismodule_1_1disbasetype.html#a3e048a22a56bb55f884b64d0ff35b3e3", null ],
+    [ "yc", "structbasedismodule_1_1disbasetype.html#a8248cf61a968bb50f3dc222f3bcbd1c2", null ],
     [ "yorigin", "structbasedismodule_1_1disbasetype.html#a1ec5215c95a2aa41a1033cc1158f8e71", null ]
 ];

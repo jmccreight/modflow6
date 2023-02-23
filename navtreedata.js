@@ -1,29 +1,31 @@
 /*
-@licstart  The following is the entire license notice for the
-JavaScript code in this file.
+ @licstart  The following is the entire license notice for the JavaScript code in this file.
 
-Copyright (C) 1997-2019 by Dimitri van Heesch
+ The MIT License (MIT)
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of version 2 of the GNU General Public License as published by
-the Free Software Foundation
+ Copyright (C) 1997-2020 by Dimitri van Heesch
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
+ Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+ and associated documentation files (the "Software"), to deal in the Software without restriction,
+ including without limitation the rights to use, copy, modify, merge, publish, distribute,
+ sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
 
-You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc.,
-51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ The above copyright notice and this permission notice shall be included in all copies or
+ substantial portions of the Software.
 
-@licend  The above is the entire license notice
-for the JavaScript code in this file
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+ BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+ @licend  The above is the entire license notice for the JavaScript code in this file
 */
 var NAVTREE =
 [
   [ "MODFLOW 6", "index.html", [
-    [ "Todo List", "todo.html", null ],
+    [ "MODFLOW 6 Source Code Documentation", "index.html", null ],
     [ "Modules", "namespaces.html", [
       [ "Modules List", "namespaces.html", "namespaces_dup" ],
       [ "Module Members", "namespacemembers.html", [
@@ -56,35 +58,65 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "_array_handlers_8f90.html",
-"_constants_8f90.html#a4542b7bb018f5ce26185f254f9eec59c",
-"_gwf_gwf_exchange_8f90.html#a4a37ae59aa2825bfaa0a41bbe42af340",
-"_memory_manager_8f90.html#a3b2c7bfb9930cdb9485650491a5450b1",
-"_observe_8f90.html#a2d71ad0a6030703942f8a1d32124d0ef",
-"_table_term_8f90_source.html",
-"bmi_8f90.html#a13aa05a08c57a88f3c7ef66dcca91510",
-"gwf3csub8_8f90.html#a0d39881d356523dd2fbf75afd55a6044",
-"gwf3lak8_8f90.html#a18e88940f27490a50a371cf30f2761b5",
-"gwf3sfr8_8f90.html#a2df712db96a8dca145df5d98736db677",
-"gwt1cnc1_8f90.html#a5e2f7260b61ed9c45db2029b8ba6097c",
-"gwt1ssm1_8f90.html#a4bb51547347deff193c009905a63f3e5",
-"interfacememorymanagermodule_1_1mem__deallocate.html#ab4b6807a4a5f7c460b662419d892cde5",
-"namespacegwfnpfmodule.html",
-"namespacetimeseriesrecordmodule.html",
-"structblockparsermodule_1_1blockparsertype.html#af2068991932b64fa1c217a9a179df1da",
-"structbudgettermmodule_1_1budgettermtype.html#acdedb0c259b57919de31558fc7d0469e",
-"structgridconnectionmodule_1_1gridconnectiontype.html#a60b6a1fc3e022e817d3f700082ffddb5",
-"structgwfcsubmodule_1_1gwfcsubtype.html#ae5484fbf3295f89c99425a0331d917b3",
-"structgwfhfbmodule_1_1gwfhfbtype.html#a41cde6e903201b89703d651b4574da4c",
-"structgwfnpfoptionsmodule_1_1gwfnpfoptionstype.html#a3869f46c549a50a7e5e6d61b31197581",
-"structgwtfmimodule_1_1gwtfmitype.html#a4a82d94e5fb88372ba89083bd5c289cb",
-"structgwtmvtmodule_1_1gwtmvttype.html#a2f83fe4154f89b3f3ccf05fdce47fb0e",
-"structimslinearmodule_1_1imslineardatatype.html#aac547e4e213acedc7f86085e424ca9b4",
-"structlistmodule_1_1listtype.html#ad775b2b619c3c53d3d4f33d9fcdce788",
-"structnumericalexchangemodule_1_1numericalexchangetype.html#a26b8c4607a29e69c611f69f77f10a007",
-"structobsmodule_1_1obstype.html#a57442246d4af6d28b2dbeb4ace028b28",
-"structsfrmodule_1_1sfrtype.html#a67e6fd11dfc5b81928df889f5ca06a5d",
-"structtimearrayseriesmodule_1_1timearrayseriestype.html#ade02ca5ff6bae8d3201307f8b10eb124",
-"structuzfmodule_1_1uzftype.html#a67af10bd2bda5a396aefed1ada2b9f35"
+"_constants_8f90.html#a060d310ded5535ce2dc85bd1ca1afd3d",
+"_grid_connection_8f90.html#a349f5821b71a8123e75f20bb04015cff",
+"_input_definition_8f90_source.html",
+"_memory_manager_8f90.html#aefa833a64722dc48b1dcd5120b5d2cf0",
+"_output_control_data_8f90_source.html",
+"_table_term_8f90.html#aa48f2031c7f30271d2cb4893e2ff7c4a",
+"bmi_8f90.html",
+"gwf3chd8_8f90_source.html",
+"gwf3disv8idm_8f90.html#a95b5119414091252b121c7df196102db",
+"gwf3npf8_8f90.html#a1635a61283c2c97f33cc03d398fb805a",
+"gwf3uzf8_8f90.html#a68e0b6d5321d171c6451e8404592e46d",
+"gwt1fmi1_8f90.html#ab0a88ae76ffd9b127327fa6a5b789e40",
+"ims8base_8f90.html#a4f7df45352607c57a3507642653df7fb",
+"interfacememorymanagermodule_1_1mem__allocate.html#ab8a14cb08885041927fea8bcc5d4e091",
+"namespacearrayreadersmodule.html#a1707e96f6079c135eb5f5575948a3202",
+"namespacecompilerversion.html#a340e9d1856b5f223fa830a94697e6608",
+"namespaceevtmodule.html#acf4321e6954396a9de45d60619dee756",
+"namespacegwfdisuinputmodule.html#a6cfef80a2f71eac0762f1c4ede0458fe",
+"namespacegwfmvrmodule.html#a3e8a7535b9ffa6dbd9c2f416ea6a6761",
+"namespacegwtaptmodule.html#ac883fa832ba90024326a5cd23e37dced",
+"namespacegwtmstmodule.html#abe3440d1c6e1f74a97645a7417574dfe",
+"namespaceinputoutputmodule.html#a3f586cec81e1b2c7ebdd88fdf2e3f6c9",
+"namespacemawmodule.html#adddfdc083f5775621ad7f0277b5a1835",
+"namespacemf6bmigrid.html#ad88efccd58e4838c717b0ba1aa59cd03",
+"namespacepackagebudgetmodule.html#ada3a8554ff80ddada307ea825bef888d",
+"namespacespatialmodelconnectionmodule.html",
+"namespaceuzfcellgroupmodule.html#a78b304f9b77cde4d1875eb03e802b76e",
+"structapimodule_1_1apitype.html#a761ab425bcb199de3e568b98799e945e",
+"structbmif_1_1bmi.html#a55dc18bb2fadccbcc20a77da560769f1",
+"structbudgettermmodule_1_1budgettermtype.html#a6906846f0fda3d86a7a4fafec7053a03",
+"structdisconnexchangemodule_1_1disconnexchangetype.html#a8e138a8d5ef8ba3c2c8990d61c7b79b0",
+"structevtmodule_1_1evttype.html#a1108b906f7353c033229cedd08afc3b1",
+"structghostnodemodule_1_1ghostnodetype.html#a65a5ce1b6ed6e1ea7beaa83558b65b71",
+"structgwfcsubmodule_1_1gwfcsubtype.html#a78ddb75838bea2d36fec3a13380bc6ac",
+"structgwfdisuinputmodule_1_1gwfdisuparamfoundtype.html#adcc3f715f184e1b1cb029df75094ca5c",
+"structgwfgwfconnectionmodule_1_1gwfgwfconnectiontype.html#a5ae70a7c6b08d9d72d919677c559b595",
+"structgwfinterfacemodelmodule_1_1gwfinterfacemodeltype.html#a2a5d43b9d7429a09d06252731b898677",
+"structgwfmvrperioddatamodule_1_1gwfmvrperioddatatype.html#ab485402dc4903035b5031d93af9f137c",
+"structgwfocmodule_1_1gwfoctype.html#ad7ca19add266b657b644eb578fd4fb79",
+"structgwtaptmodule_1_1gwtapttype.html#a57a4ae0ccd9e9b20309b5db5530d25c6",
+"structgwtdspmodule_1_1gwtdsptype.html#a2378075a8e95c0508fd45babd3d8e9c0",
+"structgwtgwtexchangemodule_1_1gwtexchangetype.html#a6eeb5b5b00af0ccc2bbb6662cf8f34fa",
+"structgwtistmodule_1_1gwtisttype.html#a95b8618da60e393935f11c4adfbaa42e",
+"structgwtmodule_1_1gwtmodeltype.html#a00f562020123977b22cc88f456e2ec3a",
+"structgwtmwtmodule_1_1gwtmwttype.html#a42bf34e224088636413c488eb98cb884",
+"structgwtsftmodule_1_1gwtsfttype.html#a2e1f1866fcbc3152253743c0d19412ec",
+"structgwtsrcmodule_1_1gwtsrctype.html#a7c5406dcb91a78a6e5dd8b49e834d89f",
+"structgwtuztmodule_1_1gwtuzttype.html#ac691fc39e8b6101c1bd51a8be497d16b",
+"structlakmodule_1_1laktype.html#a0820ee505a853d9fe96c1bcdff824407",
+"structlakmodule_1_1laktype.html#aed777c1a500454866c5b8e4a922529dd",
+"structmawmodule_1_1mawtype.html#a96f0f05034a797231eff5413b4d22795",
+"structnumericalmodelmodule_1_1numericalmodeltype.html#ab96f58495233a3b392f0500b5e3d491e",
+"structoutputcontroldatamodule_1_1outputcontroldatatype.html#a43b4f579488a52726cd3195a0e73150f",
+"structrivmodule_1_1rivtype.html#a416ca9d74856659dd22ee6a965bc2130",
+"structsfrmodule_1_1sfrtype.html#aa4fb682b0d8bc388967f79dc4cc050dc",
+"structtabletermmodule_1_1tabletermtype.html#ae711e3b51373f830ccb2e7a56b756c75",
+"structtvkmodule_1_1tvktype.html#a18f53a9018ce07713d145a1e7835155f",
+"structuzfmodule_1_1uzftype.html#a8a1a8d3a0729a7164d691135ba83303e",
+"structxt3dmodule_1_1xt3dtype.html#a8e667eb0736e3989b09970be50f26278"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

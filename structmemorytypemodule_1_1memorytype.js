@@ -1,14 +1,18 @@
 var structmemorytypemodule_1_1memorytype =
 [
     [ "mt_associated", "structmemorytypemodule_1_1memorytype.html#a24664287b92ca77494a41ef835146062", null ],
+    [ "mt_deallocate", "structmemorytypemodule_1_1memorytype.html#a4ee671eb67f2645f2bb8ebd70c88436b", null ],
     [ "table_entry", "structmemorytypemodule_1_1memorytype.html#aeed0aac91dc4d1fc4777de2915b4787e", null ],
+    [ "acharstr1d", "structmemorytypemodule_1_1memorytype.html#a164247a313b708aec179cfaf02949452", null ],
     [ "adbl1d", "structmemorytypemodule_1_1memorytype.html#a52647d7da1f223b04381258a5e4b72be", null ],
     [ "adbl2d", "structmemorytypemodule_1_1memorytype.html#a70bfbbf309a7137946aecab0480fcf94", null ],
     [ "adbl3d", "structmemorytypemodule_1_1memorytype.html#a04b246d6703e169b21b81a0e1e36fcf4", null ],
     [ "aint1d", "structmemorytypemodule_1_1memorytype.html#acb55ec71a9681457e061ba9d36e1e531", null ],
     [ "aint2d", "structmemorytypemodule_1_1memorytype.html#abc86db1bfba678de8bd81eebb0b34585", null ],
     [ "aint3d", "structmemorytypemodule_1_1memorytype.html#a5f84a214cbc077ef54a215d31c348733", null ],
+    [ "astr1d", "structmemorytypemodule_1_1memorytype.html#aecd5764f290a5f995d14763d4d6ca560", null ],
     [ "dblsclr", "structmemorytypemodule_1_1memorytype.html#aaa82277b12c090f9e20dff7ccd8d0f41", null ],
+    [ "element_size", "structmemorytypemodule_1_1memorytype.html#a98dc47a73349bc395906c2f63a29e29b", null ],
     [ "id", "structmemorytypemodule_1_1memorytype.html#ab5a4449c01b199eab9ae20e3d0f96758", null ],
     [ "intsclr", "structmemorytypemodule_1_1memorytype.html#a5187f4d821e480ef1c1aad0f190d02ad", null ],
     [ "isize", "structmemorytypemodule_1_1memorytype.html#a0fb2b6ecafe23b16ab906414fb6e2d34", null ],
@@ -20,5 +24,6 @@ var structmemorytypemodule_1_1memorytype =
     [ "name", "structmemorytypemodule_1_1memorytype.html#a28b0e66a7ef8a77f2b1b0ecf26b419b0", null ],
     [ "nrealloc", "structmemorytypemodule_1_1memorytype.html#aa25da257d1e9c0c021cf96c51c00cbb2", null ],
     [ "path", "structmemorytypemodule_1_1memorytype.html#af713779b7ae3fcdd20528010b0577e3d", null ],
-    [ "set_handler_idx", "structmemorytypemodule_1_1memorytype.html#a22c4b8a1e13f310a42279ff22ba727d3", null ]
+    [ "set_handler_idx", "structmemorytypemodule_1_1memorytype.html#a22c4b8a1e13f310a42279ff22ba727d3", null ],
+    [ "strsclr", "structmemorytypemodule_1_1memorytype.html#a6396fcc0eb84b1cf7ef4074579f4cc80", null ]
 ];

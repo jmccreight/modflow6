@@ -1,4 +1,6 @@
 <map id="gwtgwtexchangemodule::gwtexchangetype" name="gwtgwtexchangemodule::gwtexchangetype">
-<area shape="rect" id="node1" title="Data structure to hold the spatial connection data between two GWT models. The logic to get the coeff..." alt="" coords="5,131,188,340"/>
-<area shape="rect" id="node2" title=" " alt="" coords="15,5,179,83"/>
+<area shape="rect" id="node1" title="Derived type for GwtExchangeType." alt="" coords="5,968,204,1368"/>
+<area shape="rect" id="node2" href="$structdisconnexchangemodule_1_1disconnexchangetype.html" title="Exchange based on connection between discretizations of DisBaseType. The data specifies the connectio..." alt="" coords="13,593,197,920"/>
+<area shape="rect" id="node3" href="$structnumericalexchangemodule_1_1numericalexchangetype.html" title=" " alt="" coords="5,277,204,545"/>
+<area shape="rect" id="node4" href="$structbaseexchangemodule_1_1baseexchangetype.html" title=" " alt="" coords="22,5,187,229"/>
 </map>
