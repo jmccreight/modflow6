@@ -255,7 +255,6 @@ subroutine solution_explicit_create(filename, id)
     ! -- dummy variables
     class(ExplicitSolutionType) :: this  !< ExplicitSolutionType instance
     ! -- local variables
-    integer(I4B) :: ic
     integer(I4B) :: im
     class(BaseModelType), pointer :: mp => null()    
     
@@ -308,7 +307,7 @@ subroutine solution_explicit_create(filename, id)
     integer(I4B), intent(inout) :: isgcnvg       !< solution group convergence flag
     integer(I4B), intent(in) :: isuppress_output !< flag for suppressing output
     ! -- local variables
-    integer(I4B) :: ic, im
+    integer(I4B) :: im
     class(BaseModelType), pointer :: mp => null()
     !
     ! -- Calculate flow for each model

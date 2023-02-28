@@ -5,7 +5,7 @@
 !!
 !! Status and remaining tasks
 !!   ONGOING -- Implement SNF infrastructure
-!!   DONE -- Implement Explicit Model Solution (EMS6) for handle explicit models
+!!   DONE -- Implement Explicit Model Solution (EMS6) to handle explicit models
 !!   DONE -- Implement DISL Package
 !!   ONGOING -- Implement MMR Package
 !!   DONE -- Use MMR package to solve a flow problem in combination with DISL and FLW
@@ -17,6 +17,7 @@
 !!   DONE -- Observations
 !!   DONE -- Initial conditions?
 !!   DONE -- Rework the Iterative Model Solution (IMS6) to handle both implicit and explicit models
+!    Look into mass conservative MC method (https://hess.copernicus.org/articles/11/1645/2007/hess-11-1645-2007.pdf)
 !!   Deal with the timestep and subtiming issues
 !!   Implement output control
 !!   Flopy support for DISL and DISL binary grid file
@@ -47,7 +48,7 @@ module SnfModule
   public :: snf_cr
 
   type, extends(NumericalModelType) :: SnfModelType
-    type(SnfMmrType), pointer :: mmr => null() !< muskingum-manning routing package
+    type(SnfMmrType), pointer :: mmr => null() !< muskingum routing package
     type(BudgetType), pointer :: budget => null() ! budget object
     integer(I4B), pointer :: inmmr => null() ! unit number MMR
   contains

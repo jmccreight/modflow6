@@ -718,7 +718,6 @@ module SnfMmrModule
     real(DP), dimension(:), intent(inout) :: c2 !< Muskingum K coefficient
     ! -- local
     integer(I4B) :: n
-    real(DP) :: q
     real(DP) :: dtoverk
     real(DP) :: twox
     real(DP) :: two_oneminusx

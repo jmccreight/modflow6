@@ -12,50 +12,121 @@ import os
 
 import flopy
 import numpy as np
+import pytest
+from framework import TestFramework
+from simulation import TestSimulation
 
 
-def inflow_hydrograph(qpi, qb, time_base, times):
-    """
-    Generate an inflow hydrograph for the Thomas problem based on
-    a sine wave.  Function assumes all input is in seconds.
+ponce_data = """0 0 50 50
+1 3 51.441 50
+2 6 55.709 50
+3 9 62.64 50
+4 12 71.967 50
+5 15 83.332 50
+6 18 96.299 50
+7 21 110.368 50
+8 24 125 50
+9 27 139.632 50
+10 30 153.701 50
+11 33 166.668 50
+12 36 178.033 50
+13 39 187.36 50
+14 42 194.291 50
+15 45 198.559 50.002
+16 48 200 50.006
+17 51 198.559 50.018
+18 54 194.291 50.049
+19 57 187.36 50.121
+20 60 178.033 50.275
+21 63 166.668 50.575
+22 66 153.701 51.119
+23 69 139.632 52.034
+24 72 125 53.476
+25 75 110.368 55.616
+26 78 96.299 58.627
+27 81 83.332 62.656
+28 84 71.967 67.811
+29 87 62.64 74.142
+30 90 55.709 81.625
+31 93 51.441 90.165
+32 96 50 99.589
+33 99 50 109.662
+34 102 50 120.091
+35 105 50 130.549
+36 108 50 140.685
+37 111 50 150.146
+38 114 50 158.595
+39 117 50 165.722
+40 120 50 171.266
+41 123 50 175.021
+42 126 50 176.847
+43 129 50 176.676
+44 132 50 174.517
+45 135 50 170.453
+46 138 50 164.641
+47 141 50 157.305
+48 144 50 148.724
+49 147 50 139.223
+50 150 50 129.156
+51 153 50 118.886
+52 156 50 108.765
+53 159 50 99.11
+54 162 50 90.185
+55 165 50 82.184
+56 168 50 75.223
+57 171 50 69.342
+58 174 50 64.515
+59 177 50 60.662
+60 180 50 57.669
+61 183 50 55.403
+62 186 50 53.732
+63 189 50 52.528
+64 192 50 51.68
+65 195 50 51.097
+66 198 50 50.704
+67 201 50 50.444
+68 204 50 50.275
+69 207 50 50.168
+70 210 50 50.101
+71 213 50 50.06
+72 216 50 50.035
+73 219 50 50.02
+74 222 50 50.012
+75 225 50 50.007
+76 228 50 50.004
+77 231 50 50.002
+78 234 50 50.001
+79 237 50 50.001
+80 240 50 50"""
 
-    Parameters
-    ----------
-    qpi : float
-        peak inflow in cfs/ft
-    qpb : float
-        base flow rate in cfs/ft
-    time_base : float
-        hydrograph time base, in seconds.  This is the
-        time it takes for the inflow to return to the
-        base rate of qb.
-    times : ndarray
-        times, in seconds, to calculate the inflow
-    
-    Returns
-    ----------
-    q_inflow : ndarray
-        array inflow rates, in cfs/ft.  Has same size as input
-        argument, times.
 
-    """
-    amplitude = (qpi - qb) / 2
-    q_inflow = amplitude + qb + amplitude * np.sin( (2 * np.pi / time_base) * times  - .5 * np.pi)
-    idx = times > time_base
-    q_inflow[idx] = qb
-    return q_inflow
+def get_ponce_data():
+    qinflow = []
+    qoutflow = []
+    time_days = []
+    for line in ponce_data.split("\n"):
+        itime, elapsed_time, inflow, outflow = line.strip().split(" ")
+        time_days.append(float(elapsed_time))
+        qinflow.append(float(inflow))
+        qoutflow.append(float(outflow))
+    return time_days, qinflow, qoutflow
 
 
-def test_snf_thomas(function_tmpdir, targets):
-    sim_ws = str(function_tmpdir)
-    mf6 = targets["mf6"]
-    name = "snf-thomas"
+ex = ["thomas01",]
+
+
+def build_model(idx, dir):
+
+    sim_ws = dir
+    name = ex[idx]
     sim = flopy.mf6.MFSimulation(
-        sim_name=name, version="mf6", exe_name=mf6, sim_ws=sim_ws
+        sim_name=name, version="mf6", exe_name="mf6", sim_ws=sim_ws,
+        memory_print_option='all',
     )
-    nper = 20
-    tdis_rc = [(1., 1, 1.0) for ispd in range(nper)]
-    tdis = flopy.mf6.ModflowTdis(sim, nper=nper, perioddata=tdis_rc)
+    delta_t = 60 * 60 * 3 # seconds = 3 hours
+    nper = 80
+    tdis_rc = [(delta_t, 1, 1.0) for ispd in range(nper)]
+    tdis = flopy.mf6.ModflowTdis(sim, nper=nper, perioddata=tdis_rc, time_units="seconds")
     ems = flopy.mf6.ModflowEms(sim)
     snf = flopy.mf6.ModflowSnf(sim, modelname=name)
 
@@ -63,43 +134,67 @@ def test_snf_thomas(function_tmpdir, targets):
     cell2d = None
     nvert = None
 
-    nodes = 20
-    channel_length = 500. # miles
-    channel_length = channel_length * 5280. / 3.2808 # meters
-    segment_length = channel_length * 5280. / nodes
-    tosegment = list(range(1, nodes))
-    tosegment.append(-1)
+    nodes = 20  # can run 200,000 reaches in less than a second and 2 million reaches in 4 seconds
+    channel_length = 500 * 5280.  # meters
+    reach_length = channel_length / nodes
 
-    qpi = 200.
-    qb = 50.
-    hour_to_second = 60. * 60.
-    days_to_second = 24. * 60. * 60.
-    times = np.arange((nper + 1) * days_to_second, step=1 * days_to_second)
-    q_inflow = inflow_hydrograph(200., 50., 192 * hour_to_second, times)
+    qp = 200 # cfs = peak discharge
+    qb = 50 # cfs = base discharge
+    qa = (qp + qb) / 2
 
+    beta = 5. / 3.
+    rating_coefficient = 0.688
+    depth_a = 2.
+    # solve for reference depth from rating equation
+    # reference depth is the depth when flow is reference flow qa
+    depth_a = (qa / rating_coefficient) ** (1 / beta)
+    v_mean = qa / depth_a  # mean velocity at peak discharge
+    wave_celerity = beta * v_mean # 4.0 # m/s calculated as beta * v
+    q0 = qa # flow per unit width based on average discharge
+    S0 = 1. / 5280. # channel bottom slope, 1 ft/mi converted to ft/ft
+
+    print(f"{depth_a=} ft")
+    print(f"{v_mean=} ft/s")
+    print(f"{wave_celerity=} ft/s")
+
+    k_coef = reach_length / wave_celerity # seconds
+    x_coef = 0.5 * (1 - q0 / S0 / wave_celerity / reach_length) # dimensionless
+
+    time_days, qinflow, qoutflow = get_ponce_data()
+
+    tosegment = [(irch,) for irch in range(1, nodes)] + [(-1,)]
     disl = flopy.mf6.ModflowSnfdisl(
         snf, 
+        length_units="feet",
         nodes=nodes, 
         nvert=nvert,
-        segment_length=segment_length,
-        tosegment=tosegment,   # -1 gives 0 in one-based, which means outflow cell
-        idomain=1, 
+        segment_length=reach_length,
+        tosegment=tosegment,   # (-1,) gives 0 in one-based, which means outflow cell
+        idomain=1,
         vertices=vertices, 
         cell2d=cell2d,
     )
-    
+
+    # note: for specifying reach number, use fortran indexing!
+    fname = f"{name}.mmr.obs.csv"
+    mmr_obs = {
+        fname: [
+            ("OUTFLOW", "EXT-OUTFLOW", (nodes - 1,)),
+        ],
+        "digits": 10,
+    }
+
     mmr = flopy.mf6.ModflowSnfmmr(
         snf, 
-        print_flows=True,
+        print_flows=False,
+        observations=mmr_obs,
         iseg_order=list(range(nodes)),
-        qoutflow0=qb,
-        mann_n=0.0297, 
-        seg_depth=22.675, 
-        seg_slope=1./5280., 
-        x_coef=0.2
+        qoutflow0=qinflow[0],
+        k_coef=k_coef, 
+        x_coef=x_coef
     )
 
-    inflow = q_inflow[1:]
+    inflow = qinflow[1:]
     flw_spd = {ispd: [[0, inflow[ispd]]] for ispd in range(nper)}
     flw = flopy.mf6.ModflowSnfflw(
         snf,
@@ -108,32 +203,53 @@ def test_snf_thomas(function_tmpdir, targets):
         stress_period_data=flw_spd,
     )
 
-    sim.write_simulation()
-
-    mfsimnamtxt = f"""BEGIN options
-END options
-
-BEGIN timing
-  TDIS6  {name}.tdis
-END timing
-
-BEGIN models
-  snf6  {name}.nam  {name}
-END models
-
-BEGIN exchanges
-END exchanges
-
-BEGIN SOLUTIONGROUP 1
-  EMS6 {name}.ems {name}
-END SOLUTIONGROUP
-"""
-    fname = os.path.join(sim_ws, 'mfsim.nam')
-    with open(fname, 'w') as f:
-        f.write(mfsimnamtxt)
+    return sim, None
 
 
-    success, buff = sim.run_simulation(silent=False)
-    errmsg = f"model did not terminate successfully\n{buff}"
-    assert success, errmsg
+def eval_model(sim):
+    print("evaluating model...")
 
+    # get back the ponce data for comparison
+    time_days, qinflow, qoutflow = get_ponce_data()
+
+    # read the observation output
+    name = ex[sim.idxsim]
+    fpth = os.path.join(sim.simpath, f"{name}.mmr.obs.csv")
+    obsvals = np.genfromtxt(fpth, names=True, delimiter=",")
+
+    # compare output with known result
+    time_days = time_days[1:]
+    qoutflow = -np.array(qoutflow[1:])
+    atol = 0.001
+    success = np.allclose(qoutflow, obsvals["OUTFLOW"], atol=atol)
+    if not success:
+        for i, t in enumerate(time_days):
+            qa = qoutflow[i]
+            qs = obsvals["OUTFLOW"][i]
+            d = qa - qs
+            if i == 0:
+                maxdiff = d
+            else:
+                if abs(d) > maxdiff:
+                    maxdiff = abs(d)
+            print(t, qa, qs, d)
+        print(f"maximum difference is {maxdiff}")
+    assert success
+
+    return
+
+
+@pytest.mark.parametrize(
+    "idx, name",
+    list(enumerate(ex)),
+)
+def test_mf6model(idx, name, function_tmpdir, targets):
+    ws = str(function_tmpdir)
+    test = TestFramework()
+    test.build(build_model, idx, ws)
+    test.run(
+        TestSimulation(
+            name=name, exe_dict=targets, exfunc=eval_model, idxsim=idx
+        ),
+        ws,
+    )

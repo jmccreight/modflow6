@@ -29,16 +29,22 @@ import os
 
 import flopy
 import numpy as np
+import pytest
+from framework import TestFramework
+from simulation import TestSimulation
+
+ex = ["snf-disl01",]
 
 
-def test_disl_simple(function_tmpdir, targets):
-    sim_ws = str(function_tmpdir)
-    mf6 = targets["mf6"]
-    name = "snf-disl01"
+def build_model(idx, dir):
+
+    sim_ws = dir
+    name = ex[idx]
     sim = flopy.mf6.MFSimulation(
-        sim_name=name, version="mf6", exe_name=mf6, sim_ws=sim_ws,
+        sim_name=name, version="mf6", exe_name="mf6", sim_ws=sim_ws,
+        memory_print_option='all',
     )
-    sim.name_file.memory_print_option = "all"
+
     tdis = flopy.mf6.ModflowTdis(sim)
     ems = flopy.mf6.ModflowEms(sim)
     snf = flopy.mf6.ModflowSnf(sim, modelname=name)
@@ -72,14 +78,22 @@ def test_disl_simple(function_tmpdir, targets):
         cell2d=cell2d,
     )
     
+    # note: for specifying zero-based reach number, put reach number in tuple
+    fname = f"{name}.mmr.obs.csv"
+    mmr_obs = {
+        fname: [
+            ("OUTFLOW", "EXT-OUTFLOW", (nodes - 1,)),
+        ],
+        "digits": 10,
+    }
+
     mmr = flopy.mf6.ModflowSnfmmr(
         snf, 
+        observations=mmr_obs,
         print_flows=True,
         iseg_order=list(range(nodes)),
-        qoutflow0=0.,
-        mann_n=0.04, 
-        seg_depth=100., 
-        seg_slope=0.0001, 
+        qoutflow0=0.0,
+        k_coef=0.001, 
         x_coef=0.2
     )
 
@@ -91,33 +105,31 @@ def test_disl_simple(function_tmpdir, targets):
         stress_period_data=flw_spd,
     )
 
-    sim.write_simulation()
-
-    mfsimnamtxt = f"""BEGIN options
-  MEMORY_PRINT_OPTION ALL
-END options
-
-BEGIN timing
-  TDIS6  {name}.tdis
-END timing
-
-BEGIN models
-  snf6  {name}.nam  {name}
-END models
-
-BEGIN exchanges
-END exchanges
-
-BEGIN SOLUTIONGROUP 1
-  EMS6 {name}.ems {name}
-END SOLUTIONGROUP
-"""
-    fname = os.path.join(sim_ws, 'mfsim.nam')
-    with open(fname, 'w') as f:
-        f.write(mfsimnamtxt)
+    return sim, None
 
 
-    success, buff = sim.run_simulation(silent=False)
-    errmsg = f"model did not terminate successfully\n{buff}"
-    assert success, errmsg
+def eval_model(sim):
+    print("evaluating model...")
 
+    # read the observation output
+    name = ex[sim.idxsim]
+    fpth = os.path.join(sim.simpath, f"{name}.mmr.obs.csv")
+    obsvals = np.genfromtxt(fpth, names=True, delimiter=",")
+
+    return
+
+
+@pytest.mark.parametrize(
+    "idx, name",
+    list(enumerate(ex)),
+)
+def test_mf6model(idx, name, function_tmpdir, targets):
+    ws = str(function_tmpdir)
+    test = TestFramework()
+    test.build(build_model, idx, ws)
+    test.run(
+        TestSimulation(
+            name=name, exe_dict=targets, exfunc=eval_model, idxsim=idx
+        ),
+        ws,
+    )
