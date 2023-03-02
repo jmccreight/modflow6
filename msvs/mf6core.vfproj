@@ -154,7 +154,8 @@
 		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1disl1idm.f90"/>
 		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1flw1.f90"/>
 		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1mmr1.f90"/>
-		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1mmr1idm.f90"/></Filter>
+		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1mmr1idm.f90"/>
+		<File RelativePath="..\src\Model\StreamNetworkFlow\snf1oc1.f90"/></Filter>
 		<File RelativePath="..\src\Model\BaseModel.f90"/>
 		<File RelativePath="..\src\Model\NumericalModel.f90"/>
 		<File RelativePath="..\src\Model\NumericalPackage.f90"/>

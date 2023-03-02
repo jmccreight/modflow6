@@ -1180,11 +1180,28 @@
 | SNF | DISL | CELL2D | ICVERT | INTEGER (NCVERT) | is an array of integer values containing vertex numbers (in the VERTICES block) used to define the cell.  Vertices must be listed in the order that defines the line representing the cell.  Cells that are connected must share vertices. The bottom elevation of the cell is calculated using the ZV of the first and last vertex point and FDC. |
 | SNF | MMR | OPTIONS | SAVE_FLOWS | KEYWORD | keyword to indicate that budget flow terms will be written to the file specified with ``BUDGET SAVE FILE'' in Output Control. |
 | SNF | MMR | OPTIONS | PRINT_FLOWS | KEYWORD | keyword to indicate that calculated flows between cells will be printed to the listing file for every stress period time step in which ``BUDGET PRINT'' is specified in Output Control. If there is no Output Control option and ``PRINT\_FLOWS'' is specified, then flow rates are printed for the last time step of each stress period.  This option can produce extremely large list files because all cell-by-cell flows are printed.  It should only be used with the MMR Package for models that have a small number of cells. |
+| SNF | MMR | OPTIONS | OBS6 | KEYWORD | keyword to specify that record corresponds to an observations file. |
+| SNF | MMR | OPTIONS | FILEIN | KEYWORD | keyword to specify that an input filename is expected next. |
+| SNF | MMR | OPTIONS | OBS6_FILENAME | STRING | name of input file to define observations for the MMR package. See the ``Observation utility'' section for instructions for preparing observation input files. Tables \ref{table:gwf-obstypetable} and \ref{table:gwt-obstypetable} lists observation type(s) supported by the MMR package. |
 | SNF | MMR | GRIDDATA | ISEG_ORDER | INTEGER (NODES) | segment calculation order |
-| SNF | MMR | GRIDDATA | MANN_N | DOUBLE PRECISION (NODES) | manning roughness coefficient |
-| SNF | MMR | GRIDDATA | SEG_DEPTH | DOUBLE PRECISION (NODES) | Depth of bankfull water in segment |
-| SNF | MMR | GRIDDATA | SEG_SLOPE | DOUBLE PRECISION (NODES) | surface slope of each segment |
+| SNF | MMR | GRIDDATA | QOUTFLOW0 | DOUBLE PRECISION (NODES) | initial outflow from the reach at time zero |
+| SNF | MMR | GRIDDATA | K_COEF | DOUBLE PRECISION (NODES) | manning K coefficient |
 | SNF | MMR | GRIDDATA | X_COEF | DOUBLE PRECISION (NODES) | The amount of attenuation of the flow wave, called the Muskingum routing weighting factor; enter 0.0 for reservoirs, diversions, and segment(s) flowing out of the basin |
+| SNF | OC | OPTIONS | BUDGET | KEYWORD | keyword to specify that record corresponds to the budget. |
+| SNF | OC | OPTIONS | FILEOUT | KEYWORD | keyword to specify that an output filename is expected next. |
+| SNF | OC | OPTIONS | BUDGETFILE | STRING | name of the output file to write budget information. |
+| SNF | OC | OPTIONS | BUDGETCSV | KEYWORD | keyword to specify that record corresponds to the budget CSV. |
+| SNF | OC | OPTIONS | BUDGETCSVFILE | STRING | name of the comma-separated value (CSV) output file to write budget summary information.  A budget summary record will be written to this file for each time step of the simulation. |
+| SNF | OC | PERIOD | IPER | INTEGER | integer value specifying the starting stress period number for which the data specified in the PERIOD block apply.  IPER must be less than or equal to NPER in the TDIS Package and greater than zero.  The IPER value assigned to a stress period block must be greater than the IPER value assigned for the previous PERIOD block.  The information specified in the PERIOD block will continue to apply for all subsequent stress periods, unless the program encounters another PERIOD block. |
+| SNF | OC | PERIOD | SAVE | KEYWORD | keyword to indicate that information will be saved this stress period. |
+| SNF | OC | PERIOD | PRINT | KEYWORD | keyword to indicate that information will be printed this stress period. |
+| SNF | OC | PERIOD | RTYPE | STRING | type of information to save or print.  Can be BUDGET. |
+| SNF | OC | PERIOD | OCSETTING | KEYSTRING | specifies the steps for which the data will be saved. |
+| SNF | OC | PERIOD | ALL | KEYWORD | keyword to indicate save for all time steps in period. |
+| SNF | OC | PERIOD | FIRST | KEYWORD | keyword to indicate save for first step in period. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps. |
+| SNF | OC | PERIOD | LAST | KEYWORD | keyword to indicate save for last step in period. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps. |
+| SNF | OC | PERIOD | FREQUENCY | INTEGER | save at the specified time step frequency. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps. |
+| SNF | OC | PERIOD | STEPS | INTEGER (<NSTP) | save for each step specified in STEPS. This keyword may be used in conjunction with other keywords to print or save results for multiple time steps. |
 | SNF | FLW | OPTIONS | AUXILIARY | STRING (NAUX) | defines an array of one or more auxiliary variable names.  There is no limit on the number of auxiliary variables that can be provided on this line; however, lists of information provided in subsequent blocks must have a column of data for each auxiliary variable name defined here.   The number of auxiliary variables detected on this line determines the value for naux.  Comments cannot be provided anywhere on this line as they will be interpreted as auxiliary variable names.  Auxiliary variables may not be used by the package, but they will be available for use by other parts of the program.  The program will terminate with an error if auxiliary variables are specified on more than one line in the options block. |
 | SNF | FLW | OPTIONS | AUXMULTNAME | STRING | name of auxiliary variable to be used as multiplier of flow rate. |
 | SNF | FLW | OPTIONS | BOUNDNAMES | KEYWORD | keyword to indicate that boundary names may be provided with the list of inflow cells. |

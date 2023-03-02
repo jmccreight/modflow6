@@ -31,6 +31,8 @@ module SnfDislModule
   contains
     procedure :: disl_load
     procedure :: dis_da => disl_da
+    procedure, public :: record_array
+    procedure, public :: record_srcdst_list_header
     ! -- private
     procedure :: allocate_scalars
     procedure :: allocate_arrays
@@ -727,7 +729,7 @@ contains
        &/,6X,'UNIT NUMBER: ', I0,/,6X, 'FILE NAME: ', A)"
     !
     ! -- Initialize
-    ntxt = 10
+    ntxt = 9
     if (this%nvert > 0) ntxt = ntxt + 5
     !
     ! -- Open the file
@@ -920,6 +922,138 @@ contains
     return
   end subroutine disl_da
 
-  
+
+  !> @brief Record a double precision array
+  !!
+  !!   Record a double precision array.  The array will be
+  !!   printed to an external file and/or written to an unformatted external file
+  !!   depending on the argument specifications.
+  !<
+  subroutine record_array(this, darray, iout, iprint, idataun, aname, &
+                          cdatafmp, nvaluesp, nwidthp, editdesc, dinact)
+    ! -- modules
+    use TdisModule, only: kstp, kper, pertim, totim, delt
+    use InputOutputModule, only: ulasav, ulaprufw, ubdsv1
+    ! -- dummy
+    class(SnfDislType), intent(inout) :: this
+    real(DP), dimension(:), pointer, contiguous, intent(inout) :: darray !< double precision array to record
+    integer(I4B), intent(in) :: iout !< unit number for ascii output
+    integer(I4B), intent(in) :: iprint !< flag indicating whether or not to print the array
+    integer(I4B), intent(in) :: idataun !< unit number to which the array will be written in binary
+    character(len=*), intent(in) :: aname !< text descriptor of the array
+    character(len=*), intent(in) :: cdatafmp ! fortran format for writing the array
+    integer(I4B), intent(in) :: nvaluesp !< number of values per line for printing
+    integer(I4B), intent(in) :: nwidthp !< width of the number for printing
+    character(len=*), intent(in) :: editdesc !< format type (I, G, F, S, E)
+    real(DP), intent(in) :: dinact !< double precision value to use for cells that are excluded from model domain
+    ! -- local
+    integer(I4B) :: k, ifirst
+    integer(I4B) :: nlay
+    integer(I4B) :: nrow
+    integer(I4B) :: ncol
+    integer(I4B) :: nval
+    integer(I4B) :: nodeu, noder
+    integer(I4B) :: istart, istop
+    real(DP), dimension(:), pointer, contiguous :: dtemp
+    ! -- formats
+    character(len=*), parameter :: fmthsv = &
+      "(1X,/1X,a,' WILL BE SAVED ON UNIT ',I4, &
+       &' AT END OF TIME STEP',I5,', STRESS PERIOD ',I4)"
+    !
+    ! -- set variables
+    nlay = 1
+    nrow = 1
+    ncol = this%mshape(1)
+    !
+    ! -- If this is a reduced model, then copy the values from darray into
+    !    dtemp.
+    if (this%nodes < this%nodesuser) then
+      nval = this%nodes
+      dtemp => this%dbuff
+      do nodeu = 1, this%nodesuser
+        noder = this%get_nodenumber(nodeu, 0)
+        if (noder <= 0) then
+          dtemp(nodeu) = dinact
+          cycle
+        end if
+        dtemp(nodeu) = darray(noder)
+      end do
+    else
+      nval = this%nodes
+      dtemp => darray
+    end if
+    !
+    ! -- Print to iout if iprint /= 0
+    if (iprint /= 0) then
+      istart = 1
+      do k = 1, nlay
+        istop = istart + nrow * ncol - 1
+        call ulaprufw(ncol, nrow, kstp, kper, k, iout, dtemp(istart:istop), &
+                      aname, cdatafmp, nvaluesp, nwidthp, editdesc)
+        istart = istop + 1
+      end do
+    end if
+    !
+    ! -- Save array to an external file.
+    if (idataun > 0) then
+      ! -- write to binary file by layer
+      ifirst = 1
+      istart = 1
+      do k = 1, nlay
+        istop = istart + nrow * ncol - 1
+        if (ifirst == 1) write (iout, fmthsv) &
+          trim(adjustl(aname)), idataun, &
+          kstp, kper
+        ifirst = 0
+        call ulasav(dtemp(istart:istop), aname, kstp, kper, &
+                    pertim, totim, ncol, nrow, k, idataun)
+        istart = istop + 1
+      end do
+    elseif (idataun < 0) then
+      !
+      ! -- write entire array as one record
+      call ubdsv1(kstp, kper, aname, -idataun, dtemp, ncol, nrow, nlay, &
+                  iout, delt, pertim, totim)
+    end if
+    !
+    ! -- return
+    return
+  end subroutine record_array
+
+  !> @brief Record list header using ubdsv06
+  !<
+  subroutine record_srcdst_list_header(this, text, textmodel, textpackage, &
+                                       dstmodel, dstpackage, naux, auxtxt, &
+                                       ibdchn, nlist, iout)
+    ! -- module
+    use TdisModule, only: kstp, kper, pertim, totim, delt
+    use InputOutputModule, only: ubdsv06
+    ! -- dummy
+    class(SnfDislType) :: this
+    character(len=16), intent(in) :: text
+    character(len=16), intent(in) :: textmodel
+    character(len=16), intent(in) :: textpackage
+    character(len=16), intent(in) :: dstmodel
+    character(len=16), intent(in) :: dstpackage
+    integer(I4B), intent(in) :: naux
+    character(len=16), dimension(:), intent(in) :: auxtxt
+    integer(I4B), intent(in) :: ibdchn
+    integer(I4B), intent(in) :: nlist
+    integer(I4B), intent(in) :: iout
+    ! -- local
+    integer(I4B) :: nlay, nrow, ncol
+    !
+    nlay = 1
+    nrow = 1
+    ncol = this%mshape(1)
+    !
+    ! -- Use ubdsv06 to write list header
+    call ubdsv06(kstp, kper, text, textmodel, textpackage, dstmodel, dstpackage, &
+                 ibdchn, naux, auxtxt, ncol, nrow, nlay, &
+                 nlist, iout, delt, pertim, totim)
+    !
+    ! -- return
+    return
+  end subroutine record_srcdst_list_header
 
 end module SnfDislModule

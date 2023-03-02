@@ -691,6 +691,7 @@ if __name__ == '__main__':
                   'snf-nam',
                   'snf-disl',
                   'snf-mmr',
+                  'snf-oc',
                   'snf-flw',
                   'utl-spc',
                   'utl-spca',

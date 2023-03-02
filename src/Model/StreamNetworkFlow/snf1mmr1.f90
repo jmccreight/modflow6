@@ -8,7 +8,8 @@ module SnfMmrModule
 
   use KindModule, only: DP, I4B, LGP
   use ConstantsModule, only: LENMEMPATH, LENVARNAME, LINELENGTH, &
-                             DZERO, DHALF, DONE, DTWO, DTHREE
+                             DZERO, DHALF, DONE, DTWO, DTHREE, &
+                             LENBUDTXT
   use MemoryHelperModule, only: create_mem_path
   use MemoryManagerModule, only: mem_allocate
   use SimVariablesModule, only: errmsg, warnmsg
@@ -23,6 +24,10 @@ module SnfMmrModule
   implicit none
   private
   public :: SnfMmrType, mmr_cr
+
+
+  character(len=LENBUDTXT), dimension(2) :: budtxt = & !< text labels for budget terms
+    &['         STORAGE', '     EXT-OUTFLOW']
 
   type, extends(NumericalPackageType) :: SnfMmrType
 
@@ -246,6 +251,9 @@ module SnfMmrModule
     call mem_set_value(this%ipakcb, 'IPAKCB', idmMemoryPath, found%ipakcb)
     call mem_set_value(this%obs%inputFilename, 'OBS6_FILENAME', idmMemoryPath, &
                        found%obs6_filename)
+    !
+    ! -- save flows option active
+    if (found%ipakcb) this%ipakcb = -1
 
     if (found%obs6_filename) then
       this%obs%active = .true.
@@ -466,31 +474,41 @@ module SnfMmrModule
     real(DP), intent(inout), dimension(:) :: flowja
     ! -- local
     integer(I4B) :: n, ipos, m
-    real(DP) :: qnm
+    real(DP) :: qnm, q
     !
     ! -- Transfer seg_outflow into flowja
     do n = 1, this%dis%nodes
+      m = this%disl%tosegment(n)
+      ! TODO: may be a faster way than lookup
       do ipos = this%dis%con%ia(n) + 1, this%dis%con%ia(n + 1) - 1
-        m = this%dis%con%ja(ipos)
-        if (m < n) cycle
-        qnm = this%outflow_new(n)
-        flowja(ipos) = -qnm
-        flowja(this%dis%con%isym(ipos)) = qnm
+        if (this%dis%con%ja(ipos) == m) exit
       end do
+      qnm = this%outflow_new(n)
+      flowja(ipos) = -qnm
+      flowja(this%dis%con%isym(ipos)) = qnm
     end do
 
     ! Transfer any flows leaving tosegment 0 into qextoutflow
     do n = 1, this%dis%nodes
+      q = DZERO
       if (this%disl%tosegment(n) == 0) then
-        this%qextoutflow(n) = -this%outflow_new(n)
-      else
-        this%qextoutflow(n) = DZERO
+        q = -this%outflow_new(n)
       end if
+      this%qextoutflow(n) = q
+      !
+      ! -- add to diagonal
+      ipos = this%dis%con%ia(n)
+      flowja(ipos) = flowja(ipos) + q
     end do
 
     ! Transfer storage terms into qsto
     do n = 1, this%dis%nodes
-      this%qsto(n) = this%outflow_new(n) - this%inflow_new(n)
+      q = this%outflow_new(n) - this%inflow_new(n)
+      this%qsto(n) = q
+      !
+      ! -- add to diagonal
+      ipos = this%dis%con%ia(n)
+      flowja(ipos) = flowja(ipos) + q
     end do
 
     !
@@ -539,10 +557,15 @@ module SnfMmrModule
     integer(I4B), intent(in) :: icbcfl
     integer(I4B), intent(in) :: icbcun
     ! -- local
+    real(DP) :: dinact
     integer(I4B) :: ibinun
+    integer(I4B) :: iprint, nvaluesp, nwidthp
+    character(len=1) :: cdatafmp = ' ', editdesc = ' '
     ! -- formats
     !
     ! -- Set unit number for binary output
+    iprint = 0
+    dinact = DZERO
     if (this%ipakcb < 0) then
       ibinun = icbcun
     elseif (this%ipakcb == 0) then
@@ -554,7 +577,21 @@ module SnfMmrModule
     !
     ! -- Write the face flows if requested
     if (ibinun /= 0) then
+      !
+      ! -- flowja
       call this%dis%record_connection_array(flowja, ibinun, this%iout)
+      !
+      !
+      ! -- storage
+      call this%dis%record_array(this%qsto, this%iout, iprint, -ibinun, &
+                                 budtxt(1), cdatafmp, nvaluesp, &
+                                 nwidthp, editdesc, dinact)
+
+      ! -- external outflow
+      call this%dis%record_array(this%qextoutflow, this%iout, iprint, -ibinun, &
+                                 budtxt(2), cdatafmp, nvaluesp, &
+                                 nwidthp, editdesc, dinact)
+  
     end if
     !
     ! -- Return

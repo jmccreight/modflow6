@@ -1006,6 +1006,7 @@ contains
   !<
   subroutine dislconnections(this, name_model, tosegment)
     ! -- modules
+    use MemoryManagerModule, only: mem_deallocate, mem_setptr
     use SparseModule, only: sparsematrix
     ! -- dummy
     class(ConnectionsType) :: this
@@ -1039,6 +1040,18 @@ contains
     ! -- fill the isym and jas arrays
     call fillisym(this%nodes, this%nja, this%ia, this%ja, this%isym)
     call filljas(this%nodes, this%nja, this%ia, this%ja, this%isym, this%jas)
+    !
+    ! -- If reduced system, then need to build iausr and jausr, otherwise point
+    !    them to ia and ja.  
+    ! TODO: not handled yet for reduced system
+    !this%iausr => this%ia
+    !this%jausr => this%ja
+    !call this%iajausr(nrsize, nodesuser, nodereduced, nodeuser)
+    ! -- iausr and jausr will be pointers
+    call mem_deallocate(this%iausr)
+    call mem_deallocate(this%jausr)
+    call mem_setptr(this%iausr, 'IA', this%memoryPath)
+    call mem_setptr(this%jausr, 'JA', this%memoryPath)
 
     return
   end subroutine dislconnections

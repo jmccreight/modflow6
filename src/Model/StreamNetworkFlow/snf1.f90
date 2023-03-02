@@ -31,7 +31,7 @@
 module SnfModule
 
   use KindModule, only: DP, I4B
-  use ConstantsModule, only: DZERO, LENFTYPE
+  use ConstantsModule, only: DZERO, LENFTYPE, DNODATA
   use InputOutputModule, only: ParseLine, upcase
   use SimVariablesModule, only: errmsg
   use MemoryManagerModule, only: mem_allocate
@@ -40,6 +40,7 @@ module SnfModule
   use NumericalModelModule, only: NumericalModelType
   use BndModule, only: BndType, AddBndToList, GetBndFromList
   use SnfMmrModule, only: SnfMmrType
+  use SnfOcModule, only: SnfOcType
   use BudgetModule, only: BudgetType
 
   implicit none
@@ -49,8 +50,10 @@ module SnfModule
 
   type, extends(NumericalModelType) :: SnfModelType
     type(SnfMmrType), pointer :: mmr => null() !< muskingum routing package
+    type(SnfOcType), pointer :: oc => null() ! output control package
     type(BudgetType), pointer :: budget => null() ! budget object
     integer(I4B), pointer :: inmmr => null() ! unit number MMR
+    integer(I4B), pointer :: inoc => null() ! unit number OC
   contains
     procedure :: allocate_scalars
     procedure :: allocate_arrays
@@ -65,6 +68,7 @@ module SnfModule
     procedure :: model_da => snf_da
     procedure :: snf_ot_obs
     procedure :: snf_ot_flow
+    procedure :: snf_ot_dv
     procedure :: snf_ot_bdsummary
     procedure :: package_create
     procedure :: ftype_check
@@ -74,7 +78,7 @@ module SnfModule
     ! -- Module variables constant for simulation
   integer(I4B), parameter :: NIUNIT = 100
   character(len=LENFTYPE), dimension(NIUNIT) :: cunit
-  data cunit/'DISL6', 'MMR6 ', 'FLW6 ', '     ', '     ', & !  5
+  data cunit/'DISL6', 'MMR6 ', 'OC6  ', 'FLW6 ', '     ', & !  5
             &95*'     '/
 
   contains
@@ -96,6 +100,7 @@ module SnfModule
     use MemoryManagerModule, only: mem_allocate
     use SnfDislModule, only: disl_cr
     use SnfMmrModule, only: mmr_cr
+    use SnfOcModule, only: oc_cr
     use BudgetModule, only: budget_cr
     use NameFileModule, only: NameFileType
     ! -- dummy
@@ -177,6 +182,7 @@ module SnfModule
     indisl = 0
     call namefile_obj%get_unitnumber('DISL6', indisl, 1)
     call namefile_obj%get_unitnumber('MMR6', this%inmmr, 1)
+    call namefile_obj%get_unitnumber('OC6', this%inoc, 1)
     ! call namefile_obj%get_unitnumber('OBS6', this%inobs, 1)
     !
     ! -- Check to make sure that required ftype's have been specified
@@ -200,7 +206,7 @@ module SnfModule
     !
     ! -- Create packages that are tied directly to model
     ! call ic_cr(this%ic, this%name, this%inic, this%iout, this%dis)
-    ! call oc_cr(this%oc, this%name, this%inoc, this%iout)
+    call oc_cr(this%oc, this%name, this%inoc, this%iout)
     ! call snf_obs_cr(this%obs, this%inobs)
     !
     ! -- Create stress packages
@@ -247,8 +253,10 @@ module SnfModule
     !
     ! -- allocate members that are part of model class
     call mem_allocate(this%inmmr, 'INMMR', this%memoryPath)
+    call mem_allocate(this%inoc, 'INOC', this%memoryPath)
     !
     this%inmmr = 0
+    this%inoc = 0
     !
     ! -- return
     return
@@ -293,6 +301,7 @@ module SnfModule
     class(BndType), pointer :: packobj
     !
     !
+    call this%oc%oc_df()
     call this%budget%budget_df(niunit, 'VOLUME', 'L**3')
     !
     ! -- Define packages and assign iout for time series managers
@@ -328,8 +337,8 @@ module SnfModule
     deallocate(itemp)
     !
     ! -- set up output control
-    ! call this%oc%oc_ar(this%x, this%dis, this%npf%hnoflo)
-    ! call this%budget%set_ibudcsv(this%oc%ibudcsv)
+    call this%oc%oc_ar(this%x, this%dis, DNODATA)
+    call this%budget%set_ibudcsv(this%oc%ibudcsv)
     !
     ! -- Package input files now open, so allocate and read
     do ip = 1, this%bndlist%Count()
@@ -363,7 +372,7 @@ module SnfModule
     !
     ! -- Read and prepare
     if (this%inmmr > 0) call this%mmr%mmr_rp()
-    !if (this%inoc > 0) call this%oc%oc_rp()
+    if (this%inoc > 0) call this%oc%oc_rp()
     !if (this%insto > 0) call this%sto%sto_rp()
     !if (this%inmvr > 0) call this%mvr%mvr_rp()
     do ip = 1, this%bndlist%Count()
@@ -537,10 +546,10 @@ module SnfModule
     return
   end subroutine snf_bd
 
-  !> @brief GroundWater Flow Model Output
+  !> @brief Stream Network Flow Model Output
   subroutine snf_ot(this)
     ! -- modules
-    use TdisModule, only: kstp, kper, tdis_ot
+    use TdisModule, only: kstp, kper, tdis_ot, endofperiod
     ! -- dummy
     class(SnfModelType) :: this
     ! -- local
@@ -559,26 +568,26 @@ module SnfModule
     idvsave = 0
     idvprint = 0
     icbcfl = 0
-    ibudfl = 1 !cdl force to 1 -- should be zero when OC implemented
-    ! if (this%oc%oc_save('HEAD')) idvsave = 1
-    ! if (this%oc%oc_print('HEAD')) idvprint = 1
-    ! if (this%oc%oc_save('BUDGET')) icbcfl = 1
-    ! if (this%oc%oc_print('BUDGET')) ibudfl = 1
-    ! icbcun = this%oc%oc_save_unit('BUDGET')
+    ibudfl = 0
+    ! if (this%oc%oc_save('STAGE')) idvsave = 1
+    ! if (this%oc%oc_print('STAGE')) idvprint = 1
+    if (this%oc%oc_save('BUDGET')) icbcfl = 1
+    if (this%oc%oc_print('BUDGET')) ibudfl = 1
+    icbcun = this%oc%oc_save_unit('BUDGET')
     !
     ! -- Override ibudfl and idvprint flags for nonconvergence
     !    and end of period
-    ! ibudfl = this%oc%set_print_flag('BUDGET', this%icnvg, endofperiod)
-    ! idvprint = this%oc%set_print_flag('HEAD', this%icnvg, endofperiod)
+    ibudfl = this%oc%set_print_flag('BUDGET', this%icnvg, endofperiod)
+    ! idvprint = this%oc%set_print_flag('STAGE', this%icnvg, endofperiod)
     !
     ! Calculate and save observations
     call this%snf_ot_obs()
     ! !
     !   Save and print flows
     call this%snf_ot_flow(icbcfl, ibudfl, icbcun)
-    ! !
-    ! !   Save and print dependent variables
-    ! call this%gwf_ot_dv(idvsave, idvprint, ipflag)
+    !
+    !   Save and print dependent variables
+    call this%snf_ot_dv(idvsave, idvprint, ipflag)
     !
     !   Print budget summaries
     call this%snf_ot_bdsummary(ibudfl, ipflag)
@@ -660,6 +669,27 @@ module SnfModule
 
   end subroutine snf_ot_flow
 
+  subroutine snf_ot_dv(this, idvsave, idvprint, ipflag)
+    class(SnfModelType) :: this
+    integer(I4B), intent(in) :: idvsave
+    integer(I4B), intent(in) :: idvprint
+    integer(I4B), intent(inout) :: ipflag
+    class(BndType), pointer :: packobj
+    integer(I4B) :: ip
+    !
+    ! -- Print advanced package dependent variables
+    do ip = 1, this%bndlist%Count()
+      packobj => GetBndFromList(this%bndlist, ip)
+      call packobj%bnd_ot_dv(idvsave, idvprint)
+    end do
+    !
+    ! -- save stage and print stage (if implemented)
+    call this%oc%oc_ot(ipflag)
+    !
+    ! -- Return
+    return
+  end subroutine snf_ot_dv
+
   subroutine snf_ot_bdsummary(this, ibudfl, ipflag)
     use TdisModule, only: kstp, kper, totim
     class(SnfModelType) :: this
@@ -704,11 +734,13 @@ module SnfModule
     ! -- Internal flow packages deallocate
     call this%dis%dis_da()
     call this%mmr%mmr_da()
+    call this%oc%oc_da()
     call this%budget%budget_da()
     !
     ! -- Internal package objects
     deallocate (this%dis)
     deallocate (this%budget)
+    deallocate (this%oc)
     !
     ! -- Boundary packages
     do ip = 1, this%bndlist%Count()
@@ -719,6 +751,7 @@ module SnfModule
     !
     ! -- Scalars
     call mem_deallocate(this%inmmr)
+    call mem_deallocate(this%inoc)
     !
     ! -- Arrays
     !

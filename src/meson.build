@@ -88,6 +88,7 @@ modflow_sources = files(
     'Model' / 'StreamNetworkFlow' / 'snf1disl1idm.f90',
     'Model' / 'StreamNetworkFlow' / 'snf1mmr1.f90',
     'Model' / 'StreamNetworkFlow' / 'snf1mmr1idm.f90',
+    'Model' / 'StreamNetworkFlow' / 'snf1oc1.f90',
     'Model' / 'StreamNetworkFlow' / 'snf1flw1.f90',
     'Model' / 'ModelUtilities' / 'BoundaryPackage.f90',
     'Model' / 'ModelUtilities' / 'Connections.f90',

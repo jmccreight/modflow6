@@ -47,7 +47,7 @@ def build_model(idx, dir):
 
     tdis = flopy.mf6.ModflowTdis(sim)
     ems = flopy.mf6.ModflowEms(sim)
-    snf = flopy.mf6.ModflowSnf(sim, modelname=name)
+    snf = flopy.mf6.ModflowSnf(sim, modelname=name, save_flows=True)
 
     vertices = [
         [0, 0., 0., 0.], 
@@ -91,10 +91,19 @@ def build_model(idx, dir):
         snf, 
         observations=mmr_obs,
         print_flows=True,
+        save_flows=True,
         iseg_order=list(range(nodes)),
         qoutflow0=0.0,
         k_coef=0.001, 
         x_coef=0.2
+    )
+
+    # output control
+    oc = flopy.mf6.ModflowSnfoc(
+        snf,
+        budget_filerecord=f"{name}.bud",
+        saverecord=[("BUDGET", "ALL"), ],
+        printrecord=[("BUDGET", "ALL"), ],
     )
 
     flw_spd = {0: [[0, 1000.0], [1, 500.]]}

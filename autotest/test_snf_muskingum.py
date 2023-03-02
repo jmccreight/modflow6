@@ -99,7 +99,7 @@ def build_model(idx, dir):
     )
     
 
-    # note: for specifying lake number, use fortran indexing!
+    # note: for specifying reach number, use fortran indexing!
     fname = f"{name}.mmr.obs.csv"
     mmr_obs = {
         fname: [
