@@ -480,12 +480,14 @@ module SnfMmrModule
     do n = 1, this%dis%nodes
       m = this%disl%tosegment(n)
       ! TODO: may be a faster way than lookup
-      do ipos = this%dis%con%ia(n) + 1, this%dis%con%ia(n + 1) - 1
-        if (this%dis%con%ja(ipos) == m) exit
-      end do
-      qnm = this%outflow_new(n)
-      flowja(ipos) = -qnm
-      flowja(this%dis%con%isym(ipos)) = qnm
+      if (m > 0) then
+        do ipos = this%dis%con%ia(n) + 1, this%dis%con%ia(n + 1) - 1
+          if (this%dis%con%ja(ipos) == m) exit
+        end do
+        qnm = this%outflow_new(n)
+        flowja(ipos) = -qnm
+        flowja(this%dis%con%isym(ipos)) = qnm
+      end if
     end do
 
     ! Transfer any flows leaving tosegment 0 into qextoutflow
@@ -496,7 +498,7 @@ module SnfMmrModule
       end if
       this%qextoutflow(n) = q
       !
-      ! -- add to diagonal
+      ! -- add to diagonal of flowja
       ipos = this%dis%con%ia(n)
       flowja(ipos) = flowja(ipos) + q
     end do
@@ -588,6 +590,7 @@ module SnfMmrModule
                                  nwidthp, editdesc, dinact)
 
       ! -- external outflow
+      ! TODO: should this be written as a list instead?
       call this%dis%record_array(this%qextoutflow, this%iout, iprint, -ibinun, &
                                  budtxt(2), cdatafmp, nvaluesp, &
                                  nwidthp, editdesc, dinact)

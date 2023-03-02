@@ -128,7 +128,7 @@ def build_model(idx, dir):
     tdis_rc = [(delta_t, 1, 1.0) for ispd in range(nper)]
     tdis = flopy.mf6.ModflowTdis(sim, nper=nper, perioddata=tdis_rc, time_units="seconds")
     ems = flopy.mf6.ModflowEms(sim)
-    snf = flopy.mf6.ModflowSnf(sim, modelname=name)
+    snf = flopy.mf6.ModflowSnf(sim, modelname=name, save_flows=True)
 
     vertices = None
     cell2d = None
@@ -194,6 +194,14 @@ def build_model(idx, dir):
         x_coef=x_coef
     )
 
+    # output control
+    oc = flopy.mf6.ModflowSnfoc(
+        snf,
+        budget_filerecord=f"{name}.bud",
+        saverecord=[("BUDGET", "ALL"), ],
+        printrecord=[("BUDGET", "ALL"), ],
+    )
+    
     inflow = qinflow[1:]
     flw_spd = {ispd: [[0, inflow[ispd]]] for ispd in range(nper)}
     flw = flopy.mf6.ModflowSnfflw(

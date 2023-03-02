@@ -730,7 +730,7 @@ contains
     !
     ! -- Initialize
     ntxt = 9
-    if (this%nvert > 0) ntxt = ntxt + 5
+    if (this%nvert > 0) ntxt = ntxt + 6
     !
     ! -- Open the file
     inquire (unit=this%inunit, name=fname)
