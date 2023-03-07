@@ -27,7 +27,11 @@ module BaseModelModule
     procedure :: model_df
     procedure :: model_ar
     procedure :: model_rp
+    procedure :: model_ad
     procedure :: model_calculate_delt
+    procedure :: model_solve
+    procedure :: model_cq
+    procedure :: model_bd
     procedure :: model_ot
     procedure :: model_fp
     procedure :: model_da
@@ -79,6 +83,20 @@ contains
     return
   end subroutine model_rp
 
+  subroutine model_ad(this)
+! ******************************************************************************
+! model_ad -- Advance
+! ******************************************************************************
+!
+!    SPECIFICATIONS:
+! ------------------------------------------------------------------------------
+    class(BaseModelType) :: this
+! ------------------------------------------------------------------------------
+    !
+    ! -- return
+    return
+  end subroutine model_ad
+
   subroutine model_calculate_delt(this)
 ! ******************************************************************************
 ! model_calculate_delt -- Calculate time step length
@@ -92,6 +110,52 @@ contains
     ! -- return
     return
   end subroutine model_calculate_delt
+
+  subroutine model_solve(this)
+! ******************************************************************************
+! model_solve -- Solve the model (for explicit models)
+! ******************************************************************************
+!
+!    SPECIFICATIONS:
+! ------------------------------------------------------------------------------
+    class(BaseModelType) :: this
+! ------------------------------------------------------------------------------
+    !
+    ! -- return
+    return
+  end subroutine model_solve
+
+  subroutine model_cq(this, icnvg, isuppress_output)
+! ******************************************************************************
+! model_cq -- Calculate flow
+! ******************************************************************************
+!
+!    SPECIFICATIONS:
+! ------------------------------------------------------------------------------
+    class(BaseModelType) :: this
+    integer(I4B), intent(in) :: icnvg
+    integer(I4B), intent(in) :: isuppress_output
+! ------------------------------------------------------------------------------
+    !
+    ! -- return
+    return
+  end subroutine model_cq
+  
+  subroutine model_bd(this, icnvg, isuppress_output)
+! ******************************************************************************
+! model_bd -- Model budget
+! ******************************************************************************
+!
+!    SPECIFICATIONS:
+! ------------------------------------------------------------------------------
+    class(BaseModelType) :: this
+    integer(I4B), intent(in) :: icnvg
+    integer(I4B), intent(in) :: isuppress_output
+! ------------------------------------------------------------------------------
+    !
+    ! -- return
+    return
+  end subroutine model_bd
 
   subroutine model_ot(this)
 ! ******************************************************************************

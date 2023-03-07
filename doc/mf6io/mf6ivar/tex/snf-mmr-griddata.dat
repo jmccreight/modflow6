@@ -1,0 +1,12 @@
+BEGIN GRIDDATA
+  ISEG_ORDER
+    <iseg_order(nodes)> -- READARRAY
+  MANN_N
+    <mann_n(nodes)> -- READARRAY
+  SEG_DEPTH
+    <seg_depth(nodes)> -- READARRAY
+  SEG_SLOPE
+    <seg_slope(nodes)> -- READARRAY
+  X_COEF
+    <x_coef(nodes)> -- READARRAY
+END GRIDDATA

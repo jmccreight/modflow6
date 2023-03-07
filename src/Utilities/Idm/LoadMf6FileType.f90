@@ -116,9 +116,10 @@ contains
     type(MemoryType), pointer :: mt
     !
     ! -- disu vertices/cell2d blocks are contingent on NVERT dimension
-    if (mf6_input%file_type == 'DISU6') then
+    if (mf6_input%file_type == 'DISU6' .or. mf6_input%file_type == 'DISL6') then
       if (mf6_input%p_block_dfns(iblock)%blockname == 'VERTICES' .or. &
-          mf6_input%p_block_dfns(iblock)%blockname == 'CELL2D') then
+          mf6_input%p_block_dfns(iblock)%blockname == 'CELL2D' .or. &
+          mf6_input%p_block_dfns(iblock)%blockname == 'CELL1D') then
         call get_from_memorylist('NVERT', mf6_input%memoryPath, mt, found, &
                                  .false.)
         if (.not. found .or. mt%intsclr == 0) return
@@ -741,7 +742,7 @@ contains
       call mem_setptr(ndim1, 'NLAY', dis_mempath)
       call mem_setptr(ndim2, 'NCPL', dis_mempath)
       model_shape = [ndim1, ndim2]
-    case ('DISU6')
+    case ('DISU6', 'DISL6')
       call mem_allocate(model_shape, 1, 'MODEL_SHAPE', model_mempath)
       call mem_setptr(ndim1, 'NODES', dis_mempath)
       model_shape = [ndim1]

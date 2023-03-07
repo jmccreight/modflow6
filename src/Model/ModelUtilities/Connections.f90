@@ -45,6 +45,7 @@ module ConnectionsModule
     procedure :: disconnections
     procedure :: disvconnections
     procedure :: disuconnections
+    procedure :: dislconnections
     procedure :: iajausr
     procedure :: getjaindex
     procedure :: set_mask
@@ -996,6 +997,98 @@ contains
     ! -- Return
     return
   end subroutine disuconnections
+
+  !> @brief procedure to fill the connections object for a disl package
+  !!
+  !! todo: No handling yet of cl1, cl2, hwva, etc. for disl as they are not needed
+  !! and only unreduced disl grids are allowed at the moment
+  !!
+  !<
+  subroutine dislconnections(this, name_model, tosegment)
+    ! -- modules
+    use MemoryManagerModule, only: mem_deallocate, mem_setptr
+    use SparseModule, only: sparsematrix
+    ! -- dummy
+    class(ConnectionsType) :: this
+    character(len=*), intent(in) :: name_model
+    integer(I4B), dimension(:), intent(in) :: tosegment
+    ! -- local
+    type(sparsematrix) :: sparse
+    integer(I4B) :: ierror
+    !
+    ! -- Allocate scalars
+    call this%allocate_scalars(name_model)
+    !
+    ! -- Set scalars
+    this%nodes = size(tosegment)
+    this%ianglex = 0
+    !
+    ! -- create sparse matrix object using tosegment
+    !    and fill ia and ja
+    call sparse_from_tosegment(tosegment, sparse)
+    this%nja = sparse%nnz
+    this%njas = (this%nja - this%nodes) / 2
+    !
+    ! -- Allocate index arrays of size nja and symmetric arrays
+    call this%allocate_arrays()
+    !
+    ! -- Fill the IA and JA arrays from sparse, then destroy sparse
+    call sparse%sort()
+    call sparse%filliaja(this%ia, this%ja, ierror)
+    call sparse%destroy()
+    !
+    ! -- fill the isym and jas arrays
+    call fillisym(this%nodes, this%nja, this%ia, this%ja, this%isym)
+    call filljas(this%nodes, this%nja, this%ia, this%ja, this%isym, this%jas)
+    !
+    ! -- If reduced system, then need to build iausr and jausr, otherwise point
+    !    them to ia and ja.  
+    ! TODO: not handled yet for reduced system
+    !this%iausr => this%ia
+    !this%jausr => this%ja
+    !call this%iajausr(nrsize, nodesuser, nodereduced, nodeuser)
+    ! -- iausr and jausr will be pointers
+    call mem_deallocate(this%iausr)
+    call mem_deallocate(this%jausr)
+    call mem_setptr(this%iausr, 'IA', this%memoryPath)
+    call mem_setptr(this%jausr, 'JA', this%memoryPath)
+
+    return
+  end subroutine dislconnections
+
+  !> @brief Using tosegment, fill the sparse object
+  !<
+  subroutine sparse_from_tosegment(tosegment, spm)
+    ! -- modules
+    use SparseModule, only: sparsematrix
+    ! -- dummy
+    integer(I4B), dimension(:), contiguous :: tosegment
+    type(sparsematrix), intent(inout) :: spm
+    ! -- local
+    integer(I4B) :: nodes
+    integer(I4B) :: n
+    integer(I4B) :: j
+
+    nodes = size(tosegment)
+    call spm%init(nodes, nodes, 3)
+    !
+    ! -- insert diagonal so it stays in front
+    do n = 1, size(tosegment)
+      call spm%addconnection(n, n, 1)
+    end do
+    !
+    ! -- add tosegment connections for non-zero
+    !    segments (0 indicates no downstream segment)
+    do n = 1, size(tosegment)
+      j = tosegment(n)
+      if (j > 0) then
+        call spm%addconnection(n, j, 1)
+        call spm%addconnection(j, n, 1)
+      end if
+    end do
+
+    return
+  end subroutine sparse_from_tosegment
 
   subroutine iajausr(this, nrsize, nodesuser, nodereduced, nodeuser)
 ! ******************************************************************************
